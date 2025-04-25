@@ -1,0 +1,1166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>MxGPT~CodeNode</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MxGPT CodeNode: A dynamic platform for coding assistance, sharing snippets, and collaborative projects.">
+    <meta charset="UTF-8">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-okaidia.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" href="image-modified.png">
+    <style>
+        :root {
+            --matrix-green: #00ff00;
+            --matrix-dark-green: #00cc00;
+            --matrix-bg: #0a0a0a;
+            --matrix-glow: rgba(0, 255, 0, 0.5);
+            --light-bg: #e5e7eb;
+            --light-text: #111827;
+            --cyberpunk-pink: #ff007f;
+            --cyberpunk-blue: #00b7eb;
+        }
+
+        body {
+            margin: 0;
+            background: var(--matrix-bg);
+            color: var(--matrix-green);
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+            overflow-x: hidden;
+        }
+
+        body.light-theme {
+            background: var(--light-bg);
+            color: var(--light-text);
+        }
+
+        body.cyberpunk-theme {
+            background: #1a1a3d;
+            color: var(--cyberpunk-pink);
+        }
+
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.7;
+            filter: blur(1px);
+        }
+
+        /* Enhanced Container Styles */
+        .matrix-chat {
+            max-width: 100%;
+            margin: 1rem;
+            padding: 1.5rem;
+            background: rgba(0, 10, 0, 0.85);
+            border: 2px solid var(--matrix-green);
+            border-radius: 1rem;
+            box-shadow: 0 0 2rem var(--matrix-glow);
+            min-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        .light-theme .matrix-chat {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: #3b82f6;
+            box-shadow: 0 0 2rem rgba(0, 0, 0, 0.1);
+        }
+
+        .cyberpunk-theme .matrix-chat {
+            background: rgba(26, 26, 61, 0.95);
+            border-color: var(--cyberpunk-pink);
+            box-shadow: 0 0 2rem rgba(255, 0, 127, 0.3);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            scrollbar-width: thin;
+            scrollbar-color: var(--matrix-green) transparent;
+        }
+
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--matrix-green);
+            border-radius: 3px;
+        }
+
+        .light-theme .chat-messages::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+        }
+
+        .cyberpunk-theme .chat-messages::-webkit-scrollbar-thumb {
+            background: var(--cyberpunk-pink);
+        }
+
+        /* Message Styles with Proper Wrapping */
+        .message {
+            margin: 1rem 0;
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            background: rgba(0, 30, 0, 0.15);
+            transition: all 0.2s;
+            max-width: 90%;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+
+        .message:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px var(--matrix-glow);
+        }
+
+        .light-theme .message {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .cyberpunk-theme .message {
+            background: rgba(255, 0, 127, 0.1);
+        }
+
+        .user-message {
+            margin-left: auto;
+            border-left: 3px solid var(--matrix-green);
+            background: rgba(0, 50, 0, 0.2);
+        }
+
+        .light-theme .user-message {
+            border-left-color: #3b82f6;
+        }
+
+        .cyberpunk-theme .user-message {
+            border-left-color: var(--cyberpunk-blue);
+        }
+
+        .bot-message {
+            margin-right: auto;
+            border-right: 3px solid var(--cyberpunk-blue);
+            background: rgba(0, 30, 50, 0.2);
+        }
+
+        .light-theme .bot-message {
+            border-right-color: #3b82f6;
+        }
+
+        .cyberpunk-theme .bot-message {
+            border-right-color: var(--cyberpunk-pink);
+        }
+
+        .message pre {
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-x: auto;
+        }
+
+        .timestamp {
+            font-size: 0.875rem;
+            opacity: 0.75;
+            margin-top: 0.5rem;
+            text-align: right;
+            color: var(--matrix-green);
+        }
+
+        .light-theme .timestamp {
+            color: #3b82f6;
+        }
+
+        .cyberpunk-theme .timestamp {
+            color: var(--cyberpunk-pink);
+        }
+
+        /* Perfect Code Block Containment */
+        .code-block {
+            position: relative;
+            margin: 1rem 0;
+            border: 2px solid var(--matrix-green);
+            border-radius: 0.5rem;
+            background: rgba(0, 10, 0, 0.7);
+            overflow-x: auto;
+            max-width: 100%;
+            box-shadow: 0 4px 20px var(--matrix-glow);
+            transition: all 0.3s;
+        }
+
+        .code-block:hover {
+            box-shadow: 0 8px 30px var(--matrix-glow);
+        }
+
+        .light-theme .code-block {
+            border-color: #3b82f6;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .cyberpunk-theme .code-block {
+            border-color: var(--cyberpunk-pink);
+            background: rgba(26, 26, 61, 0.9);
+            box-shadow: 0 4px 20px rgba(255, 0, 127, 0.3);
+        }
+
+        .code-header {
+            padding: 0.5rem 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0.5rem 0.5rem 0 0;
+            font-size: 0.875rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--matrix-green);
+        }
+
+        .light-theme .code-header {
+            background: rgba(59, 130, 246, 0.1);
+            border-bottom-color: #3b82f6;
+        }
+
+        .cyberpunk-theme .code-header {
+            background: rgba(255, 0, 127, 0.1);
+            border-bottom-color: var(--cyberpunk-pink);
+        }
+
+        .code-block pre {
+            margin: 0;
+            padding: 1rem;
+            overflow-x: auto;
+            max-width: 100%;
+            tab-size: 4;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* Enhanced Input Area */
+        .chat-input {
+            padding: 1.5rem 0 0;
+            border-top: 1px solid rgba(0, 255, 0, 0.1);
+        }
+
+        .light-theme .chat-input {
+            border-top-color: rgba(59, 130, 246, 0.1);
+        }
+
+        .cyberpunk-theme .chat-input {
+            border-top-color: rgba(255, 0, 127, 0.1);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 6rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            background: rgba(0, 20, 0, 0.3);
+            border: 1px solid var(--matrix-green);
+            color: var(--matrix-green);
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            transition: all 0.3s;
+        }
+
+        textarea:focus {
+            box-shadow: 0 0 20px var(--matrix-glow);
+            outline: none;
+        }
+
+        .light-theme textarea {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: #3b82f6;
+            color: var(--light-text);
+        }
+
+        .cyberpunk-theme textarea {
+            background: rgba(26, 26, 61, 0.9);
+            border-color: var(--cyberpunk-pink);
+            color: var(--cyberpunk-blue);
+        }
+
+        /* Beautiful Button Group */
+        .button-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.5rem;
+            margin: 1rem 0;
+        }
+
+        select, button {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            background: rgba(0, 40, 0, 0.3);
+            border: 1px solid var(--matrix-green);
+            color: var(--matrix-green);
+            font-family: 'Courier New', monospace;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        select:hover, button:hover {
+            background: var(--matrix-green);
+            color: var(--matrix-bg);
+            box-shadow: 0 0 15px var(--matrix-glow);
+            transform: translateY(-1px);
+        }
+
+        select::after, button::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 255, 0, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        select:hover::after, button:hover::after {
+            left: 100%;
+        }
+
+        .light-theme select, .light-theme button {
+            background: rgba(0, 0, 0, 0.05);
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        .light-theme select:hover, .light-theme button:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .cyberpunk-theme select, .cyberpunk-theme button {
+            background: rgba(255, 0, 127, 0.1);
+            border-color: var(--cyberpunk-pink);
+            color: var(--cyberpunk-pink);
+        }
+
+        .cyberpunk-theme select:hover, .cyberpunk-theme button:hover {
+            background: var(--cyberpunk-pink);
+            color: white;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: -100%;
+            top: 0;
+            width: 20rem;
+            height: 100%;
+            background: rgba(0, 10, 0, 0.95);
+            border-right: 2px solid var(--matrix-green);
+            transition: left 0.3s ease-in-out;
+            padding: 1.5rem;
+            z-index: 1000;
+            box-sizing: border-box;
+        }
+
+        .sidebar.open {
+            left: 0;
+        }
+
+        .light-theme .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            border-right-color: #3b82f6;
+        }
+
+        .cyberpunk-theme .sidebar {
+            background: rgba(26, 26, 61, 0.95);
+            border-right-color: var(--cyberpunk-pink);
+        }
+
+        .sidebar-toggle {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 1001;
+            background: rgba(0, 10, 0, 0.7);
+            border: 2px solid var(--matrix-green);
+            color: var(--matrix-green);
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--matrix-green);
+            color: var(--matrix-bg);
+            box-shadow: 0 0 15px var(--matrix-glow);
+        }
+
+        .light-theme .sidebar-toggle {
+            background: rgba(255, 255, 255, 0.7);
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+
+        .light-theme .sidebar-toggle:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .cyberpunk-theme .sidebar-toggle {
+            background: rgba(26, 26, 61, 0.7);
+            border-color: var(--cyberpunk-pink);
+            color: var(--cyberpunk-pink);
+        }
+
+        .cyberpunk-theme .sidebar-toggle:hover {
+            background: var(--cyberpunk-pink);
+            color: white;
+        }
+
+        .file-upload-wrapper {
+            position: relative;
+        }
+
+        .file-upload-wrapper input[type="file"] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .file-upload-button::before {
+            content: '101010';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            color: var(--matrix-green);
+            opacity: 0;
+            font-size: 0.8em;
+            transition: opacity 0.3s;
+            animation: rain 1s linear infinite;
+        }
+
+        .file-upload-button:hover::before {
+            opacity: 0.2;
+        }
+
+        .output-panel {
+            background: rgba(0, 10, 0, 0.7);
+            border: 2px solid var(--matrix-green);
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 0.5rem;
+            color: var(--matrix-green);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .light-theme .output-panel {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: #3b82f6;
+            color: var(--light-text);
+        }
+
+        .cyberpunk-theme .output-panel {
+            background: rgba(26, 26, 61, 0.9);
+            border-color: var(--cyberpunk-pink);
+            color: var(--cyberpunk-blue);
+        }
+
+        .snippet-item, .tutorial-item, .project-item {
+            padding: 0.5rem;
+            border: 2px solid var(--matrix-green);
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            border-radius: 0.5rem;
+            transition: all 0.3s;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .snippet-item:hover, .tutorial-item:hover, .project-item:hover {
+            background: rgba(0, 255, 0, 0.1);
+            box-shadow: 0 0 15px var(--matrix-glow);
+        }
+
+        .light-theme .snippet-item, .light-theme .tutorial-item, .light-theme .project-item {
+            border-color: #3b82f6;
+        }
+
+        .cyberpunk-theme .snippet-item, .cyberpunk-theme .tutorial-item, .cyberpunk-theme .project-item {
+            border-color: var(--cyberpunk-pink);
+        }
+
+        .suggestion {
+            position: absolute;
+            background: rgba(0, 10, 0, 0.9);
+            color: var(--matrix-green);
+            padding: 0.5rem;
+            border: 2px solid var(--matrix-green);
+            border-radius: 0.5rem;
+            z-index: 10;
+            max-width: 20rem;
+            box-shadow: 0 4px 20px var(--matrix-glow);
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .light-theme .suggestion {
+            background: rgba(255, 255, 255, 0.9);
+            color: var(--light-text);
+            border-color: #3b82f6;
+        }
+
+        .cyberpunk-theme .suggestion {
+            background: rgba(26, 26, 61, 0.9);
+            color: var(--cyberpunk-blue);
+            border-color: var(--cyberpunk-pink);
+        }
+
+        @keyframes rain {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Mobile Optimization */
+        @media (max-width: 768px) {
+            .matrix-chat {
+                margin: 0.5rem;
+                padding: 1rem;
+                min-height: 95vh;
+            }
+
+            .message {
+                max-width: 95%;
+                padding: 1rem;
+            }
+
+            .user-message, .bot-message {
+                margin-left: 10%;
+                margin-right: 10%;
+            }
+
+            .button-group {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .sidebar {
+                width: 16rem;
+            }
+
+            .sidebar-toggle {
+                top: 0.5rem;
+                left: 0.5rem;
+                padding: 0.25rem;
+            }
+
+            textarea, select, button {
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CYKFB1BGKC"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-CYKFB1BGKC');
+    </script>
+</head>
+<body>
+    <canvas id="matrix-canvas"></canvas>
+
+    <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <div class="sidebar" id="sidebar">
+        <h3 class="text-lg font-bold mt-4">Projects</h3>
+        <div class="project-list" id="project-list"></div>
+        <h3 class="text-lg font-bold mt-4">Snippets</h3>
+        <div class="snippet-list" id="snippet-list"></div>
+        <h3 class="text-lg font-bold mt-4">Tutorials</h3>
+        <div class="tutorial-list" id="tutorial-list"></div>
+    </div>
+
+    <div class="matrix-chat">
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot-message">
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                        <i class="fas fa-robot text-xs"></i>
+                    </div>
+                    <strong>CODEGPT</strong>
+                    <span class="timestamp">Just now</span>
+                </div>
+                <pre>Welcome to MxGPT CodeNode! Ask coding questions, share snippets, upload files, or start a project. I'm here to assist!</pre>
+            </div>
+        </div>
+
+        <div class="chat-input">
+            <div class="button-group">
+                <select id="language-selector" aria-label="Select programming language">
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                    <option value="other">Other</option>
+                </select>
+                <div class="file-upload-wrapper">
+                    <button class="file-upload-button"><i class="fas fa-upload mr-2"></i>Upload</button>
+                    <input type="file" id="file-upload" accept=".js,.py,.java,.cpp,.html,.css,.txt" aria-label="Upload code file">
+                </div>
+                <button onclick="startVoiceInput()" aria-label="Start voice input"><i class="fas fa-microphone"></i> Voice</button>
+                <button onclick="createProject()" aria-label="Create new project"><i class="fas fa-folder-plus"></i> Project</button>
+                <button onclick="formatCode()" aria-label="Format code"><i class="fas fa-broom"></i> Format</button>
+                <button onclick="saveSnippet()" aria-label="Save snippet"><i class="fas fa-save"></i> Save</button>
+                <button onclick="shareSession()" aria-label="Share session"><i class="fas fa-share"></i> Share</button>
+                <button onclick="exportChat()" aria-label="Export chat"><i class="fas fa-download"></i> Export</button>
+                <select id="theme-selector" aria-label="Select theme">
+                    <option value="dark">Matrix</option>
+                    <option value="light">Light</option>
+                    <option value="cyberpunk">Cyberpunk</option>
+                </select>
+            </div>
+            <textarea id="user-input" placeholder="Ask a coding question, share a snippet, or describe your project..." aria-label="Enter your coding query or snippet"></textarea>
+            <div class="flex gap-2 mt-3">
+                <button onclick="sendMessage()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
+                    <i class="fas fa-paper-plane mr-2"></i> Send
+                </button>
+                <button onclick="startVoiceInput()" class="px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                    <i class="fas fa-microphone"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js" defer></script>
+    <script>
+        // Matrix Rain Effect
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()';
+        const fontSize = 14;
+        const columns = Math.floor(window.innerWidth / fontSize);
+        const drops = Array(columns).fill(1);
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(10, 10, 10, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drops.forEach((y, x) => {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                ctx.fillStyle = Math.random() > 0.9 ? '#00cc00' : '#00ff00';
+                ctx.font = `${fontSize}px 'Courier New', monospace`;
+                ctx.fillText(text, x * fontSize, y * fontSize);
+
+                if (y * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[x] = 0;
+                }
+                drops[x]++;
+            });
+
+            requestAnimationFrame(drawMatrix);
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        drawMatrix();
+
+        // Sound Effects
+        function playClickSound() {
+            const audio = new Audio('https://freesound.org/data/previews/320/320147_5260872-lq.mp3');
+            audio.play().catch(() => {});
+        }
+
+        // Theme Management
+        function setTheme(theme) {
+            document.body.className = '';
+            if (theme !== 'dark') document.body.classList.add(`${theme}-theme`);
+            localStorage.setItem('theme', theme);
+            playClickSound();
+        }
+
+        document.getElementById('theme-selector').addEventListener('change', (e) => {
+            setTheme(e.target.value);
+        });
+
+        if (localStorage.getItem('theme')) {
+            setTheme(localStorage.getItem('theme'));
+            document.getElementById('theme-selector').value = localStorage.getItem('theme');
+        }
+
+        // Sidebar Toggle
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+            const toggleButton = document.querySelector('.sidebar-toggle');
+            toggleButton.innerHTML = sidebar.classList.contains('open') ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
+            playClickSound();
+        }
+
+        // Chat Functionality
+        const API_KEY = 'sk-b7f50af650dc4afdb6aa42d35e659dd3'; // Replace with your actual key
+        const API_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
+        let conversationHistory = [];
+
+        async function callDeepSeek(prompt) {
+            try {
+                const messages = [...conversationHistory, { role: "user", content: prompt }];
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "deepseek-coder-33b-instruct",
+                        messages,
+                        temperature: 0.7,
+                        max_tokens: 2000
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch response from DeepSeek API');
+                const data = await response.json();
+                const content = data.choices[0].message.content;
+                conversationHistory.push({ role: "user", content: prompt }, { role: "assistant", content });
+                if (conversationHistory.length > 10) conversationHistory = conversationHistory.slice(-10);
+                return content;
+            } catch (error) {
+                console.error('Error calling DeepSeek API:', error);
+                throw error;
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('user-input');
+            const language = document.getElementById('language-selector').value;
+            const message = input.value.trim();
+            if (!message) return;
+
+            playClickSound();
+            addMessage(message, true, language);
+            input.value = '';
+            const loadingMsg = addMessage('Processing...', false);
+
+            try {
+                const prompt = `As a code expert, respond to the following in the context of ${language}: "${message}"`;
+                const response = await callDeepSeek(prompt);
+                loadingMsg.remove();
+                addMessage(response, false, language);
+
+                if (message.toLowerCase().includes('tutorial')) {
+                    addTutorial(message);
+                }
+                if (message.includes('```')) {
+                    await reviewCode(message, language);
+                    await debugCode(message, language);
+                }
+            } catch (error) {
+                loadingMsg.remove();
+                addMessage(`Error: ${error.message}`, false);
+            }
+        }
+
+        function addMessage(content, isUser, language = 'other') {
+            const chat = document.getElementById('chat-messages');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+
+            const timestamp = new Date().toLocaleTimeString();
+            const headerDiv = document.createElement('div');
+            headerDiv.className = 'flex items-center gap-2 mb-2';
+            headerDiv.innerHTML = `
+                <div class="w-6 h-6 ${isUser ? 'bg-green-500' : 'bg-blue-500'} rounded-full flex items-center justify-center">
+                    <i class="fas ${isUser ? 'fa-user' : 'fa-robot'} text-xs"></i>
+                </div>
+                <strong>${isUser ? 'USER' : 'CODEGPT'}</strong>
+                <span class="timestamp">${timestamp}</span>
+            `;
+
+            const codeRegex = /```(\w+)?\n([\s\S]*?)```/g;
+            let htmlContent = '';
+            let lastIndex = 0;
+            let match;
+
+            while ((match = codeRegex.exec(content)) !== null) {
+                const lang = match[1] || language;
+                const code = match[2];
+                htmlContent += content.slice(lastIndex, match.index);
+                htmlContent += `
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>${lang}</span>
+                            <div class="flex gap-2">
+                                <button class="px-2 py-1 text-sm" onclick="copyCode(this)"><i class="fas fa-copy mr-1"></i>Copy</button>
+                                ${lang === 'javascript' || lang === 'python' || lang === 'html' ? `<button class="px-2 py-1 text-sm" onclick="runCode(this, '${lang}')"><i class="fas fa-play mr-1"></i>Run</button>` : ''}
+                                <button class="px-2 py-1 text-sm" onclick="editCode(this)"><i class="fas fa-edit mr-1"></i>Edit</button>
+                                <button class="px-2 py-1 text-sm" onclick="saveSnippet(this)"><i class="fas fa-save mr-1"></i>Save</button>
+                                <button class="px-2 py-1 text-sm" onclick="saveVersion(this)"><i class="fas fa-code-branch mr-1"></i>Version</button>
+                            </div>
+                        </div>
+                        <pre><code class="language-${lang}">${code}</code></pre>
+                        <div class="output-panel hidden"></div>
+                    </div>
+                `;
+                lastIndex = match.index + match[0].length;
+            }
+            htmlContent += content.slice(lastIndex);
+
+            msgDiv.appendChild(headerDiv);
+            msgDiv.innerHTML += `<pre>${htmlContent}</pre>`;
+            chat.appendChild(msgDiv);
+            chat.scrollTop = chat.scrollHeight;
+
+            Prism.highlightAllUnder(msgDiv);
+            return msgDiv;
+        }
+
+        function copyCode(button) {
+            const code = button.closest('.code-block').querySelector('code').textContent;
+            navigator.clipboard.writeText(code);
+            playClickSound();
+            button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+            setTimeout(() => button.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy', 2000);
+        }
+
+        async function runCode(button, language) {
+            const code = button.closest('.code-block').querySelector('code').textContent;
+            const outputPanel = button.closest('.code-block').querySelector('.output-panel');
+            outputPanel.classList.remove('hidden');
+            outputPanel.textContent = 'Running...';
+
+            const startTime = performance.now();
+            try {
+                if (language === 'javascript') {
+                    const originalConsoleLog = console.log;
+                    let output = '';
+                    console.log = (...args) => output += args.join(' ') + '\n';
+                    eval(code);
+                    console.log = originalConsoleLog;
+                    outputPanel.textContent = output || 'No output';
+                } else if (language === 'python') {
+                    outputPanel.textContent = 'Python execution not supported in browser. Use an external IDE.';
+                } else if (language === 'html') {
+                    const playground = document.createElement('div');
+                    playground.className = 'flex flex-col gap-2';
+                    playground.innerHTML = `
+                        <textarea class="w-full p-2 bg-gray-800 text-white rounded">${code}</textarea>
+                        <iframe class="w-full h-64 bg-white" sandbox="allow-scripts"></iframe>
+                    `;
+                    outputPanel.appendChild(playground);
+                    const iframe = playground.querySelector('iframe');
+                    iframe.contentDocument.open();
+                    iframe.contentDocument.write(code);
+                    iframe.contentDocument.close();
+                    outputPanel.textContent = '';
+                } else {
+                    outputPanel.textContent = 'Execution not supported for this language.';
+                }
+                const endTime = performance.now();
+                outputPanel.textContent += `\nExecution time: ${(endTime - startTime).toFixed(2)}ms`;
+                analyzeCode(code, language, outputPanel);
+            } catch (error) {
+                outputPanel.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        function editCode(button) {
+            const codeBlock = button.closest('.code-block');
+            const codeElement = codeBlock.querySelector('code');
+            const code = codeElement.textContent;
+            const textarea = document.createElement('textarea');
+            textarea.value = code;
+            textarea.className = 'w-full p-2 bg-gray-800 text-white rounded';
+            codeBlock.replaceChild(textarea, codeElement.parentElement);
+            button.innerHTML = '<i class="fas fa-save mr-1"></i>Save';
+            button.onclick = () => saveCode(button, textarea);
+        }
+
+        function saveCode(button, textarea) {
+            const codeBlock = button.closest('.code-block');
+            const lang = codeBlock.querySelector('.code-header span').textContent;
+            const pre = document.createElement('pre');
+            const code = document.createElement('code');
+            code.className = `language-${lang}`;
+            code.textContent = textarea.value;
+            pre.appendChild(code);
+            codeBlock.replaceChild(pre, textarea);
+            button.innerHTML = '<i class="fas fa-edit mr-1"></i>Edit';
+            button.onclick = () => editCode(button);
+            Prism.highlightAllUnder(codeBlock);
+        }
+
+        function saveSnippet(button) {
+            const code = button?.closest('.code-block')?.querySelector('code')?.textContent;
+            const lang = button?.closest('.code-block')?.querySelector('.code-header span')?.textContent;
+            if (!code || !lang) {
+                const snippets = JSON.parse(localStorage.getItem('snippets') || '[]');
+                snippets.push({ code: '/* New Snippet */', lang: 'javascript', name: `Snippet ${snippets.length + 1}` });
+                localStorage.setItem('snippets', JSON.stringify(snippets));
+                updateSnippetList();
+                playClickSound();
+                return;
+            }
+            const snippets = JSON.parse(localStorage.getItem('snippets') || '[]');
+            snippets.push({ code, lang, name: `Snippet ${snippets.length + 1}` });
+            localStorage.setItem('snippets', JSON.stringify(snippets));
+            updateSnippetList();
+            playClickSound();
+        }
+
+        function saveVersion(button) {
+            const code = button.closest('.code-block').querySelector('code').textContent;
+            const lang = button.closest('.code-block').querySelector('.code-header span').textContent;
+            const versions = JSON.parse(localStorage.getItem('versions') || '[]');
+            versions.push({ code, lang, timestamp: new Date().toISOString() });
+            localStorage.setItem('versions', JSON.stringify(versions));
+            addMessage(`Version saved at ${new Date().toLocaleTimeString()}`, false);
+            playClickSound();
+        }
+
+        document.getElementById('file-upload').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const button = document.querySelector('.file-upload-button');
+            button.classList.add('animate-pulse');
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const content = e.target.result;
+                const language = file.name.split('.').pop();
+                addMessage(`File: ${file.name}\n\`\`\`${language}\n${content}\n\`\`\``, true, language);
+                button.classList.remove('animate-pulse');
+            };
+            reader.readAsText(file);
+        });
+
+        function startVoiceInput() {
+            if (!('webkitSpeechRecognition' in window)) {
+                addMessage('Voice input not supported in this browser.', false);
+                return;
+            }
+
+            const recognition = new webkitSpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('user-input').value = transcript;
+                sendMessage();
+            };
+
+            recognition.onerror = (event) => {
+                addMessage(`Voice input error: ${event.error}`, false);
+            };
+
+            recognition.start();
+            playClickSound();
+        }
+
+        async function reviewCode(code, language) {
+            try {
+                const prompt = `Review the following ${language} code for errors, style issues, and optimizations:\n\`\`\`${language}\n${code}\n\`\`\``;
+                const review = await callDeepSeek(prompt);
+                addMessage(`Code Review:\n${review}`, false);
+            } catch (error) {
+                addMessage(`Error during code review: ${error.message}`, false);
+            }
+        }
+
+        async function debugCode(code, language) {
+            try {
+                const prompt = `Identify potential errors in the following ${language} code and suggest fixes:\n\`\`\`${language}\n${code}\n\`\`\``;
+                const debug = await callDeepSeek(prompt);
+                addMessage(`Debug Suggestions:\n${debug}`, false);
+            } catch (error) {
+                addMessage(`Error during debugging: ${error.message}`, false);
+            }
+        }
+
+        function formatCode() {
+            const input = document.getElementById('user-input');
+            let code = input.value.trim();
+            if (!code) return;
+
+            const language = document.getElementById('language-selector').value;
+            if (language === 'javascript' || language === 'html' || language === 'css') {
+                code = code.replace(/\n\s*/g, '\n').replace(/\{\s*/g, '{ ').replace(/\}\s*/g, ' }').trim();
+                input.value = code;
+                addMessage(`Formatted ${language} code in input.`, false);
+            } else {
+                addMessage('Formatting not supported for this language.', false);
+            }
+            playClickSound();
+        }
+
+        function analyzeCode(code, language, outputPanel) {
+            const lines = code.split('\n').length;
+            const complexity = Math.min(Math.round(code.length / 100), 10);
+            outputPanel.textContent += `\nMetrics: ${lines} lines, Complexity Score: ${complexity}/10`;
+        }
+
+        function addTutorial(query) {
+            const tutorials = JSON.parse(localStorage.getItem('tutorials') || '[]');
+            tutorials.push({ name: `Tutorial: ${query.slice(0, 20)}...`, steps: ['Step 1: Start', 'Step 2: Code', 'Step 3: Test'] });
+            localStorage.setItem('tutorials', JSON.stringify(tutorials));
+            updateTutorialList();
+        }
+
+        function updateTutorialList() {
+            const tutorialList = document.getElementById('tutorial-list');
+            tutorialList.innerHTML = '';
+            const tutorials = JSON.parse(localStorage.getItem('tutorials') || '[]');
+            tutorials.forEach((tutorial, index) => {
+                const item = document.createElement('div');
+                item.className = 'tutorial-item';
+                item.textContent = tutorial.name;
+                item.onclick = () => {
+                    addMessage(`Tutorial: ${tutorial.name}\n${tutorial.steps.join('\n')}`, false);
+                };
+                tutorialList.appendChild(item);
+            });
+        }
+
+        function updateSnippetList() {
+            const snippetList = document.getElementById('snippet-list');
+            snippetList.innerHTML = '';
+            const snippets = JSON.parse(localStorage.getItem('snippets') || '[]');
+            snippets.forEach((snippet, index) => {
+                const item = document.createElement('div');
+                item.className = 'snippet-item';
+                item.textContent = snippet.name;
+                item.onclick = () => {
+                    addMessage(`\`\`\`${snippet.lang}\n${snippet.code}\n\`\`\``, true, snippet.lang);
+                };
+                snippetList.appendChild(item);
+            });
+        }
+
+        function createProject() {
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const projectName = prompt('Enter project name:');
+            if (!projectName) return;
+            projects.push({ name: projectName, files: [] });
+            localStorage.setItem('projects', JSON.stringify(projects));
+            updateProjectList();
+            playClickSound();
+        }
+
+        function updateProjectList() {
+            const projectList = document.getElementById('project-list');
+            projectList.innerHTML = '';
+            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+            projects.forEach((project, index) => {
+                const item = document.createElement('div');
+                item.className = 'project-item';
+                item.textContent = project.name;
+                item.onclick = () => {
+                    addMessage(`Opened project: ${project.name}`, false);
+                };
+                projectList.appendChild(item);
+            });
+        }
+
+        function shareSession() {
+            const messages = Array.from(document.querySelectorAll('.message')).map(msg => ({
+                isUser: msg.classList.contains('user-message'),
+                content: msg.querySelector('pre').textContent
+            }));
+            const sessionId = btoa(JSON.stringify(messages));
+            const shareUrl = `${window.location.origin}?session=${sessionId}`;
+            navigator.clipboard.writeText(shareUrl);
+            addMessage(`Session URL copied to clipboard: ${shareUrl}`, false);
+            playClickSound();
+        }
+
+        function loadSharedSession() {
+            const params = new URLSearchParams(window.location.search);
+            const sessionId = params.get('session');
+            if (sessionId) {
+                try {
+                    const messages = JSON.parse(atob(sessionId));
+                    messages.forEach(msg => addMessage(msg.content, msg.isUser));
+                } catch (error) {
+                    addMessage('Error loading shared session.', false);
+                }
+            }
+        }
+
+        let suggestionTimeout;
+        document.getElementById('user-input').addEventListener('input', (event) => {
+            clearTimeout(suggestionTimeout);
+            const input = event.target;
+            const value = input.value;
+            if (value.length < 3) return;
+
+            suggestionTimeout = setTimeout(async () => {
+                try {
+                    const response = await callDeepSeek(`Provide a short code suggestion for: "${value}" in ${document.getElementById('language-selector').value}`);
+                    const suggestion = document.createElement('div');
+                    suggestion.className = 'suggestion';
+                    suggestion.textContent = response.slice(0, 100);
+                    input.parentElement.appendChild(suggestion);
+                    setTimeout(() => suggestion.remove(), 3000);
+                } catch (error) {
+                    console.error('Error fetching suggestion:', error);
+                }
+            }, 500);
+        });
+
+        function exportChat() {
+            const messages = document.querySelectorAll('.message');
+            let markdown = '# MxGPT CodeNode Chat History\n\n';
+            messages.forEach(msg => {
+                const isUser = msg.classList.contains('user-message');
+                const content = msg.querySelector('pre').textContent;
+                markdown += `## ${isUser ? 'User' : 'CodeGPT'}\n${content}\n\n`;
+            });
+            const blob = new Blob([markdown], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'chat_history.md';
+            a.click();
+            URL.revokeObjectURL(url);
+            playClickSound();
+        }
+
+        document.getElementById('user-input').addEventListener('keydown', (event) => {
+            if (event.ctrlKey && event.key === 'Enter') {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+
+        updateSnippetList();
+        updateTutorialList();
+        updateProjectList();
+        loadSharedSession();
+    </script>
+</body>
+</html>

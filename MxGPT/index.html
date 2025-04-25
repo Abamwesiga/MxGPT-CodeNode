@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MxGPT~CodeNode</title>
+    <link rel="icon" href="image-modified.png">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        :root {
+            --matrix-green: #00ff00;
+            --dark-bg: #000000;
+            --light-bg: #f5f5f5;
+            --light-text: #333;
+            --light-border: #007bff;
+            --code-font: 'Courier New', monospace;
+            --glow: rgba(0, 255, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: var(--code-font);
+        }
+
+        body {
+            background-color: var(--dark-bg);
+            color: var(--matrix-green);
+            position: relative;
+            overflow-x: hidden;
+            transition: background-color 0.5s, color 0.5s;
+        }
+
+        body.light-theme {
+            background-color: var(--light-bg);
+            color: var(--light-text);
+        }
+
+        /* Preloader */
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--dark-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .preloader-text {
+            color: var(--matrix-green);
+            font-size: 1.5rem;
+            text-shadow: 0 0 10px var(--matrix-green);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Matrix Rain Background */
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: -1;
+            opacity: 0.3;
+            filter: blur(1px);
+        }
+
+        /* Navigation Bar */
+        .top-nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            padding: 1rem 2rem;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--matrix-green);
+            z-index: 1000;
+            transition: box-shadow 0.3s ease;
+        }
+
+        .top-nav.scrolled {
+            box-shadow: 0 2px 5px var(--glow);
+        }
+
+        .light-theme .top-nav {
+            background: rgba(255, 255, 255, 0.9);
+            border-bottom: 1px solid var(--light-border);
+        }
+
+        .nav-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--matrix-green);
+            text-decoration: none;
+            position: relative;
+            padding: 0.5rem 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .light-theme .nav-links a {
+            color: var(--light-text);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: 0;
+            left: 0;
+            background: var(--matrix-green);
+            transition: width 0.3s ease;
+        }
+
+        .light-theme .nav-links a::after {
+            background: var(--light-border);
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .nav-links a:hover {
+            text-shadow: 0 0 10px var(--matrix-green);
+        }
+
+        .light-theme .nav-links a:hover {
+            text-shadow: 0 0 10px var(--light-border);
+        }
+
+        /* Dropdown Menu */
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: rgba(0, 20, 0, 0.9);
+            border: 1px solid var(--matrix-green);
+            border-radius: 4px;
+            padding: 1rem;
+            min-width: 200px;
+            box-shadow: 0 0 15px var(--glow);
+        }
+
+        .light-theme .dropdown-menu {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--light-border);
+        }
+
+        .dropdown:hover .dropdown-menu {
+            display: block;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .dropdown-menu li {
+            padding: 0.5rem 0;
+        }
+
+        .dropdown-menu a {
+            color: var(--matrix-green);
+        }
+
+        .light-theme .dropdown-menu a {
+            color: var(--light-text);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Main Content */
+        main {
+            margin-top: 80px;
+            padding: 2rem;
+            min-height: calc(100vh - 160px);
+        }
+
+        /* Sections Styling */
+        section {
+            padding: 4rem 2rem;
+            border-bottom: 1px solid rgba(0, 255, 0, 0.1);
+            position: relative;
+            background: rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .light-theme section {
+            background: rgba(255, 255, 255, 0.7);
+            border-bottom: 1px solid rgba(0, 123, 255, 0.1);
+        }
+
+        .section-title {
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            text-shadow: 0 0 10px var(--matrix-green);
+        }
+
+        .light-theme .section-title {
+            text-shadow: 0 0 10px var(--light-border);
+        }
+
+        .family-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .family-member {
+            text-align: center;
+            padding: 1rem;
+            border: 1px solid var(--matrix-green);
+            border-radius: 5px;
+            transition: all 0.3s ease;
+            background: rgba(0, 20, 0, 0.5);
+        }
+
+        .light-theme .family-member {
+            border: 1px solid var(--light-border);
+            background: rgba(255, 255, 255, 0.8);
+        }
+
+        .family-member:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: 0 0 20px var(--glow);
+        }
+
+        .light-theme .family-member:hover {
+            box-shadow: 0 0 20px rgba(0, 123, 255, 0.3);
+        }
+
+        .family-member img {
+            width: 100%;
+            max-width: 200px;
+            height: auto;
+            margin-bottom: 1rem;
+            border-radius: 5px;
+            filter: drop-shadow(0 0 10px var(--matrix-green));
+        }
+
+        .matrix-button {
+            display: inline-block;
+            padding: 1rem 2rem;
+            margin-top: 2rem;
+            border: 1px solid var(--matrix-green);
+            color: var(--matrix-green);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .light-theme .matrix-button {
+            border: 1px solid var(--light-border);
+            color: var(--light-text);
+        }
+
+        .matrix-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(0, 255, 0, 0.2),
+                transparent
+            );
+            transition: 0.5s;
+        }
+
+        .light-theme .matrix-button::before {
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(0, 123, 255, 0.2),
+                transparent
+            );
+        }
+
+        .matrix-button:hover::before {
+            left: 100%;
+        }
+
+        .matrix-button:hover {
+            box-shadow: 0 0 15px var(--glow);
+        }
+
+        /* Mobile Navigation */
+        @media (max-width: 768px) {
+            .top-nav {
+                display: none;
+            }
+
+            .bottom-nav {
+                position: fixed;
+                bottom: 0;
+                width: 100%;
+                background: rgba(0, 0, 0, 0.9);
+                border-top: 1px solid var(--matrix-green);
+                padding: 1rem;
+                z-index: 100 ​0;
+            }
+
+            .light-theme .bottom-nav {
+                background: rgba(255, 255, 255, 0.9);
+                border-top: 1px solid var(--light-border);
+            }
+
+            .bottom-nav ul {
+                display: flex;
+                justify-content: space-around;
+                list-style: none;
+            }
+
+            .bottom-nav a {
+                color: var(--matrix-green);
+                font-size: 1.5rem;
+                transition: all 0.3s ease;
+            }
+
+            .light-theme .bottom-nav a {
+                color: var(--light-text);
+            }
+
+            .bottom-nav a:hover {
+                transform: scale(1.2);
+                text-shadow: 0 0 10px var(--matrix-green);
+            }
+
+            .light-theme .bottom-nav a:hover {
+                text-shadow: 0 0 10px var(--light-border);
+            }
+
+            .section-title {
+                font-size: 2rem;
+            }
+        }
+
+        /* Matrix Terminal Effects */
+        .terminal {
+            border: 1px solid var(--matrix-green);
+            padding: 2rem;
+            margin: 2rem auto;
+            position: relative;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.7);
+            max-width: 800px;
+        }
+
+        .light-theme .terminal {
+            border: 1px solid var(--light-border);
+            background: rgba(255, 255, 255, 0.7);
+        }
+
+        .terminal::before {
+            content: '>';
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            color: var(--matrix-green);
+            animation: blink 1s infinite;
+        }
+
+        .light-theme .terminal::before {
+            color: var(--light-border);
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        .glow {
+            text-shadow: 0 0 10px var(--matrix-green);
+            animation: glowPulse 2s ease-in-out infinite;
+        }
+
+        .light-theme .glow {
+            text-shadow: 0 0 10px var(--light-border);
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { text-shadow: 0 0 10px var(--matrix-green); }
+            50% { text-shadow: 0 0 20px var(--matrix-green); }
+        }
+
+        @keyframes glowPulse {
+            0%, 100% { text-shadow: 0 0 10px var(--light-border); }
+            50% { text-shadow: 0 0 20px var(--light-border); }
+        }
+    
+
+        /* Social Links */
+        .desktop-footer {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .social-links {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .social-links a {
+            color: var(--matrix-green);
+            font-size: 2rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .light-theme .social-links a {
+            color: var(--light-text);
+        }
+
+        .social-links a:hover {
+            transform: scale(1.3);
+            text-shadow: 0 0 20px var(--matrix-green);
+        }
+
+        .light-theme .social-links a:hover {
+            text-shadow: 0 0 20px var(--light-border);
+        }
+
+        .social-links a::after {
+            content: attr(data-platform);
+            position: absolute;
+            right: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 20, 0, 0.9);
+            padding: 0.3rem 0.8rem;
+            border-radius: 3px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .light-theme .social-links a::after {
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .social-links a:hover::after {
+            opacity: 1;
+        }
+
+        @media (min-width: 769px) {
+            .desktop-footer {
+                display: block;
+            }
+            .bottom-nav {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .bottom-nav {
+                display: block;
+            }
+        }
+    </style>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CYKFB1BGKC"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-CYKFB1BGKC');
+    </script>
+</head>
+<body>
+    <div id="preloader">
+        <div class="preloader-text">> Initializing MxGPT-CodeNode...</div>
+    </div>
+
+    <canvas id="matrix-canvas"></canvas>
+
+    <header>
+        <nav class="top-nav" role="navigation" aria-label="Main navigation">
+            <div class="nav-container">
+                <a href="#home" class="logo matrix-logo glow" style="font-size: 2rem; text-decoration:none; font-weight: bold; text-shadow: 0 0 20px var(--matrix-green), 0 0 30px var(--matrix-green);">
+                    <span style="color: var(--matrix-green);">MxGPT</span><span style="color: var(--matrix-green);">-CodeNode</span>
+                </a>
+                <ul class="nav-links">
+                    <li><a href="#home" aria-label="Home">Home</a></li>
+                    <li><a href="#features" aria-label="Features">Features</a></li>
+                    <li class="dropdown">
+                        <a href="#our-team" aria-label="Our Team">Our Team</a>
+                        <ul class="dropdown-menu">
+                            <li><a href="mailto:abamwesigakasisi2006@gmail.com" target="_blank" aria-label="Email">Email</a></li>
+                            <li><a href="https://wa.me/255697349592" target="_blank" aria-label="WhatsApp">WhatsApp</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="chat.html" aria-label="Code Assistance">Code Assistance</a></li>
+                    <li><a href="https://wa.me/255697349592" aria-label="Contact">Contact</a></li>
+                </ul>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <section id="home" class="terminal">
+            <h1 class="glow typing-target"></h1>
+            <p class="typing-target"></p>
+            <p class="typing-target"></p>
+            <p class="typing-target"></p>
+            <a href="chat.html" class="matrix-button" onclick="playClickSound()">Start Coding Session</a>
+        </section>
+
+        <section id="family">
+            <h2 class="section-title">Meet the CodeNode Family</h2>
+            <div class="family-grid">
+                <div class="family-member" tabindex="0" aria-label="MxGPT-CodeNode: Primary Code Assistance Interface">
+                    <img src="ChatGPT Image Apr 24, 2025, 01_30_52 AM.png" alt="MxGPT-CodeNode">
+                    <h3>MxGPT-CodeNode</h3>
+                    <p>Primary Code Assistance Interface</p>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="CodeGuard: Security and Debugging AI">
+                    <img src="8eb604a0-e523-4816-ac7f-b9235a6c3a7b copy.png" alt="CodeGuard">
+                    <h3>CodeGuard</h3>
+                    <p>Security and Debugging AI</p>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="SyntaxCore: Code Optimization Unit">
+                    <img src="8eb604a0-e523-4816-ac7f-b9235a6c3a7b copy.png" alt="SyntaxCore">
+                    <h3>SyntaxCore</h3>
+                    <p>Code Optimization Unit</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="introduction">
+            <div class="terminal">
+                <h2 class="section-title">Introducing MxGPT-CodeNode</h2>
+                <img src="ChatGPT Image Apr 24, 2025, 01_30_52 AM.png" alt="MxGPT-CodeNode" style="max-width: 200px; margin: 1rem auto; display: block;">
+                <p style="text-align: center; line-height: 1.6;">
+                    Your ultimate code assistance tool!<br>
+                    Powered by deep learning, MxGPT-CodeNode<br>
+                    helps you write, debug, and optimize code<br>
+                    with unparalleled efficiency.
+                </p>
+                <a href="#features" class="matrix-button" style="margin: 2rem auto; display: block; width: fit-content;" onclick="playClickSound()">
+                    Learn More
+                </a>
+            </div>
+        </section>
+
+        <section id="features">
+            <h2 class="section-title">System Features</h2>
+            <div class="family-grid">
+                <div class="family-member" tabindex="0" aria-label="Intelligent Code Suggestions">
+                    <i class="fas fa-brain fa-3x"></i>
+                    <h3>Intelligent Code Suggestions</h3>
+                    <p>Get real-time suggestions for efficient coding.</p>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="Secure Debugging">
+                    <i class="fas fa-shield-alt fa-3x"></i>
+                    <h3>Secure Debugging</h3>
+                    <p>Identify and fix vulnerabilities in your code.</p>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="Code Optimization">
+                    <i class="fas fa-code fa-3x"></i>
+                    <h3>Code Optimization</h3>
+                    <p>Enhance performance with optimized code structures.</p>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="Interactive Terminal">
+                    <i class="fas fa-terminal fa-3x"></i>
+                    <h3>Interactive Terminal</h3>
+                    <p>Run and test your code directly within the interface.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="testimonials">
+            <h2 class="section-title">What Developers Say</h2>
+            <div class="family-grid">
+                <div class="family-member" tabindex="0" aria-label="Testimonial by Alex J.">
+                    <p>"MxGPT-CodeNode has transformed my workflow. It's like having a coding partner!"</p>
+                    <h3>- Alex J.</h3>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="Testimonial by Maria K.">
+                    <p>"The debugging features are a lifesaver. I can focus on building, not fixing."</p>
+                    <h3>- Maria K.</h3>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="Testimonial by John D.">
+                    <p>"The intelligent suggestions are spot on. Highly recommend MxGPT-CodeNode!"</p>
+                    <h3>- John D.</h3>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq">
+            <h2 class="section-title">Frequently Asked Questions</h2>
+            <div class="family-grid">
+                <div class="family-member" tabindex="0" aria-label="What is MxGPT-CodeNode?">
+                    <h3>What is MxGPT-CodeNode?</h3>
+                    <p>MxGPT-CodeNode is an AI-powered code assistant designed to enhance your coding experience.</p>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="How secure is MxGPT-CodeNode?">
+                    <h3>How secure is MxGPT-CodeNode?</h3>
+                    <p>All operations are performed with strict security protocols to protect your code.</p>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="Can I customize MxGPT-CodeNode?">
+                    <h3>Can I customize MxGPT-CodeNode?</h3>
+                    <p>Yes, MxGPT-CodeNode can adapt to your coding style and preferences.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="roadmap">
+            <h2 class="section-title">Development Roadmap</h2>
+            <div class="family-grid">
+                <div class="family-member" tabindex="0" aria-label="Phase 1: Launch">
+                    <h3>Phase 1</h3>
+                    <p>Launch with core code assistance features.</p>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="Phase 2: Advanced Tools">
+                    <h3>Phase 2</h3>
+                    <p>Introduce advanced debugging and optimization tools.</p>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="Phase 3: Multi-language Support">
+                    <h3>Phase 3</h3>
+                    <p>Expand AI capabilities for multi-language support.</p>
+                </div>
+                <div class="family-member" tabindex="0" aria-label="Phase 4: Collaborative Coding">
+                    <h3>Phase 4</h3>
+                    <p>Integrate collaborative coding features for teams.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="desktop-footer">
+            <div class="social-links">
+            <a href="https://x.com/abba_pydev" target="_blank" data-platform="X" onclick="playClickSound()" aria-label="Follow us on X">
+                    <i class="fa-brands fa-x-twitter"></i>
+                </a>
+                <a href="www.youtube.com/@pythondev_abba" target="_blank" data-platform="YouTube" onclick="playClickSound()" aria-label="Subscribe on YouTube">
+                    <i class="fab fa-youtube"></i>
+                </a>
+                <a href="mailto:abamwesigakasisi2006@gmail.com" data-platform="Email" onclick="playClickSound()" aria-label="Contact via Email">
+                    <i class="fas fa-envelope"></i>
+                </a>
+                <a href="#" data-platform="Toggle Theme" onclick="toggleTheme(); playClickSound();" aria-label="Toggle Theme">
+                    <i class="fas fa-adjust"></i>
+                </a>
+            </div>
+        </div>
+
+        <nav class="bottom-nav" role="navigation" aria-label="Mobile navigation">
+            <ul>
+                <li><a href="#home" onclick="playClickSound()" aria-label="Home"><i class="fas fa-home"></i></a></li>
+                <li><a href="#features" onclick="playClickSound()" aria-label="Features"><i class="fas fa-cogs"></i></a></li>
+                <li><a href="chat.html" onclick="playClickSound()" aria-label="Code Assistance"><i class="fas fa-comment"></i></a></li>
+                <li><a href="https://wa.me/255697349592" onclick="playClickSound()" aria-label="Contact"><i class="fas fa-envelope"></i></a></li>
+            </ul>
+        </nav>
+    </footer>
+
+    <script>
+        // Preloader
+        window.addEventListener('load', () => {
+            const preloader = document.getElementById('preloader');
+            preloader.style.opacity = '0';
+            setTimeout(() => preloader.remove(), 500);
+        });
+
+        // Matrix Rain Effect
+        const canvas = document.getElementById('matrix-canvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*()';
+        const drops = [];
+        const fontSize = 14;
+        const columns = canvas.width / fontSize;
+        const colors = ['#0F0', '#0FF', '#00F'];
+
+        for (let i = 0; i < columns; i++) {
+            drops[i] = 1;
+        }
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
+                ctx.font = fontSize + 'px monospace';
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+
+        setInterval(drawMatrix, 50);
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+
+        // Sound Effects
+        function playClickSound() {
+            const audio = new Audio('https://freesound.org/data/previews/320/320147_5260872-lq.mp3');
+            audio.play().catch(() => {});
+        }
+
+        // Theme Toggle
+        function toggleTheme() {
+            document.body.classList.toggle('light-theme');
+        }
+
+        // Bottom nav visibility control
+        function toggleBottomNav() {
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (window.innerWidth <= 768) {
+                bottomNav.style.display = 'block';
+            } else {
+                bottomNav.style.display = 'none';
+            }
+        }
+
+        // Smooth Scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                target.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+
+        // Sticky Nav Shadow
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('.top-nav');
+            if (window.scrollY > 50) {
+                nav.classList.add('scrolled');
+            } else {
+                nav.classList.remove('scrolled');
+            }
+        });
+
+        // Typing Animation for Terminal
+        const typingTargets = document.querySelectorAll('#home .typing-target');
+        const texts = [
+            "> INITIALIZING MxGPT-CodeNode SYSTEM...",
+            "> Loading advanced code assistance modules...",
+            "> Activating deep learning protocols...",
+            "> SYSTEM READY FOR CODE ASSISTANCE"
+        ];
+
+        function typeText(element, text, callback) {
+            let i = 0;
+            element.textContent = '';
+            function type() {
+                if (i < text.length) {
+                    element.textContent += text.charAt(i);
+                    i++;
+                    setTimeout(type, 50);
+                } else if (callback) {
+                    callback();
+                }
+            }
+            type();
+        }
+
+        function startTyping() {
+            typingTargets.forEach((target, index) => {
+                setTimeout(() => {
+                    typeText(target, texts[index]);
+                }, index * 2000);
+            });
+        }
+
+        // Parallax Effect
+        window.addEventListener('scroll', () => {
+            document.querySelectorAll('section').forEach(section => {
+                const offset = window.scrollY * 0.1;
+                section.style.transform = `translateY(${offset}px)`;
+            });
+        });
+
+        // Initialize
+        window.addEventListener('DOMContentLoaded', () => {
+            toggleBottomNav();
+            startTyping();
+        });
+
+        window.addEventListener('resize', toggleBottomNav);
+    </script>
+</body>
+</html>
