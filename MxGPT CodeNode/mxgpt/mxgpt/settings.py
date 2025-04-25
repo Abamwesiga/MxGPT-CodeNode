@@ -66,3 +66,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'fallback-secret')
+
+DEBUG= False
