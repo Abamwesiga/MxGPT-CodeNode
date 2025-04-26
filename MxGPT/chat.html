@@ -721,37 +721,79 @@
         }
 
         // Chat Functionality
-        const API_KEY = 'sk-b7f50af650dc4afdb6aa42d35e659dd3'; // Replace with your actual key
-        const API_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions';
+        // *** INSERT YOUR OPENAI API KEY HERE ***
+        // Replace the placeholder below with your valid OpenAI API key (e.g., 'sk-your-actual-key-here')
+        // Get it from https://platform.openai.com/ after signing up or logging in
+        const API_KEY = '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'; // Placeholder key, replace with your own!
+        const API_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
         let conversationHistory = [];
 
-        async function callDeepSeek(prompt) {
-            try {
-                const messages = [...conversationHistory, { role: "user", content: prompt }];
-                const response = await fetch(API_ENDPOINT, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${API_KEY}`
-                    },
-                    body: JSON.stringify({
-                        model: "deepseek-coder-33b-instruct",
-                        messages,
-                        temperature: 0.7,
-                        max_tokens: 2000
-                    })
-                });
+        // Updated function to call OpenAI API with gpt-3.5-turbo
+        // Handles rate limits (429) with user-friendly message
+        async function callOpenAI(prompt, retries = 3) {
+            // Loop to retry API call up to 'retries' times for rate limit (429) errors
+            for (let i = 0; i < retries; i++) {
+                try {
+                    // Set up a 10-second timeout for the fetch request
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
 
-                if (!response.ok) throw new Error('Failed to fetch response from DeepSeek API');
-                const data = await response.json();
-                const content = data.choices[0].message.content;
-                conversationHistory.push({ role: "user", content: prompt }, { role: "assistant", content });
-                if (conversationHistory.length > 10) conversationHistory = conversationHistory.slice(-10);
-                return content;
-            } catch (error) {
-                console.error('Error calling DeepSeek API:', error);
-                throw error;
+                    // Build the messages array with conversation history and new prompt
+                    const messages = [...conversationHistory, { role: "user", content: prompt }];
+
+                    // Make the API call to OpenAI
+                    const response = await fetch(API_ENDPOINT, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            // *** ENSURE YOUR API KEY IS SET ABOVE ***
+                            // The Bearer token uses the API_KEY you provide
+                            'Authorization': `Bearer ${API_KEY}`
+                        },
+                        body: JSON.stringify({
+                            model: "gpt-3.5-turbo", // Using gpt-3.5-turbo as requested
+                            messages,
+                            temperature: 0.7, // Controls response randomness
+                            max_tokens: 2000 // Limits response length
+                        }),
+                        signal: controller.signal // For timeout
+                    });
+
+                    clearTimeout(timeoutId); // Clear timeout if request completes
+
+                    // Check for HTTP errors (e.g., 401, 429, 500)
+                    if (!response.ok) {
+                        if (response.status === 429) {
+                            // Rate limit hit, return user-friendly message
+                            return "API limit reached, please try again later.";
+                        }
+                        const errorText = await response.text();
+                        throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorText}`);
+                    }
+
+                    // Parse response and validate
+                    const data = await response.json();
+                    if (!data.choices?.[0]?.message?.content) {
+                        throw new Error('Invalid OpenAI API response: No content found');
+                    }
+
+                    // Extract content and update conversation history
+                    const content = data.choices[0].message.content;
+                    conversationHistory.push({ role: "user", content: prompt }, { role: "assistant", content });
+                    if (conversationHistory.length > 10) conversationHistory = conversationHistory.slice(-10);
+
+                    return content; // Return the API response
+                } catch (error) {
+                    console.error('Error calling OpenAI API:', error);
+                    if (i === retries - 1 || error.message.includes('429')) {
+                        // Return user-friendly message for rate limits or final retry
+                        return "API limit reached, please try again later.";
+                    }
+                    // Continue retrying for other errors
+                }
             }
+            // Fallback if all retries fail
+            return "API limit reached, please try again later.";
         }
 
         async function sendMessage() {
@@ -765,22 +807,19 @@
             input.value = '';
             const loadingMsg = addMessage('Processing...', false);
 
-            try {
-                const prompt = `As a code expert, respond to the following in the context of ${language}: "${message}"`;
-                const response = await callDeepSeek(prompt);
-                loadingMsg.remove();
-                addMessage(response, false, language);
+            // *** API KEY USED HERE ***
+            // The callOpenAI function uses the API_KEY you set above
+            const prompt = `As a code expert, respond to the following in the context of ${language}: "${message}"`;
+            const response = await callOpenAI(prompt);
+            loadingMsg.remove();
+            addMessage(response, false, language);
 
-                if (message.toLowerCase().includes('tutorial')) {
-                    addTutorial(message);
-                }
-                if (message.includes('```')) {
-                    await reviewCode(message, language);
-                    await debugCode(message, language);
-                }
-            } catch (error) {
-                loadingMsg.remove();
-                addMessage(`Error: ${error.message}`, false);
+            if (message.toLowerCase().includes('tutorial')) {
+                addTutorial(message);
+            }
+            if (message.includes('```')) {
+                await reviewCode(message, language);
+                await debugCode(message, language);
             }
         }
 
@@ -983,23 +1022,19 @@
         }
 
         async function reviewCode(code, language) {
-            try {
-                const prompt = `Review the following ${language} code for errors, style issues, and optimizations:\n\`\`\`${language}\n${code}\n\`\`\``;
-                const review = await callDeepSeek(prompt);
-                addMessage(`Code Review:\n${review}`, false);
-            } catch (error) {
-                addMessage(`Error during code review: ${error.message}`, false);
-            }
+            // *** API KEY USED HERE ***
+            // The callOpenAI function uses the API_KEY you set above
+            const prompt = `Review the following ${language} code for errors, style issues, and optimizations:\n\`\`\`${language}\n${code}\n\`\`\``;
+            const review = await callOpenAI(prompt);
+            addMessage(`Code Review:\n${review}`, false);
         }
 
         async function debugCode(code, language) {
-            try {
-                const prompt = `Identify potential errors in the following ${language} code and suggest fixes:\n\`\`\`${language}\n${code}\n\`\`\``;
-                const debug = await callDeepSeek(prompt);
-                addMessage(`Debug Suggestions:\n${debug}`, false);
-            } catch (error) {
-                addMessage(`Error during debugging: ${error.message}`, false);
-            }
+            // *** API KEY USED HERE ***
+            // The callOpenAI function uses the API_KEY you set above
+            const prompt = `Identify potential errors in the following ${language} code and suggest fixes:\n\`\`\`${language}\n${code}\n\`\`\``;
+            const debug = await callOpenAI(prompt);
+            addMessage(`Debug Suggestions:\n${debug}`, false);
         }
 
         function formatCode() {
@@ -1119,16 +1154,14 @@
             if (value.length < 3) return;
 
             suggestionTimeout = setTimeout(async () => {
-                try {
-                    const response = await callDeepSeek(`Provide a short code suggestion for: "${value}" in ${document.getElementById('language-selector').value}`);
-                    const suggestion = document.createElement('div');
-                    suggestion.className = 'suggestion';
-                    suggestion.textContent = response.slice(0, 100);
-                    input.parentElement.appendChild(suggestion);
-                    setTimeout(() => suggestion.remove(), 3000);
-                } catch (error) {
-                    console.error('Error fetching suggestion:', error);
-                }
+                // *** API KEY USED HERE ***
+                // The callOpenAI function uses the API_KEY you set above
+                const response = await callOpenAI(`Provide a short code suggestion for: "${value}" in ${document.getElementById('language-selector').value}`);
+                const suggestion = document.createElement('div');
+                suggestion.className = 'suggestion';
+                suggestion.textContent = response.slice(0, 100);
+                input.parentElement.appendChild(suggestion);
+                setTimeout(() => suggestion.remove(), 3000);
             }, 500);
         });
 
