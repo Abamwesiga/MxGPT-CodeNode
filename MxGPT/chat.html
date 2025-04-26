@@ -1,46 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>MxGPT~CodeNode</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MxGPT CodeNode: A dynamic platform for coding assistance, sharing snippets, and collaborative projects.">
     <meta charset="UTF-8">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeVision AI</title>
+    <!-- Tesseract.js for OCR -->
+    <script src="https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js"></script>
+    <!-- Esprima for JavaScript parsing -->
+    <script src="https://unpkg.com/esprima@4.0.1/dist/esprima.min.js"></script>
+    <!-- Prism.js for syntax highlighting -->
     <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-okaidia.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js" defer></script>
+    <!-- Font Awesome for icons -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <link rel="icon" href="image-modified.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/acorn/8.10.0/acorn.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/acorn-loose/8.4.0/acorn-loose.min.js"></script>
     <style>
         :root {
             --matrix-green: #00ff00;
             --matrix-dark-green: #00cc00;
-            --matrix-bg: #0a0a0a;
-            --matrix-glow: rgba(0, 255, 0, 0.5);
-            --light-bg: #e5e7eb;
-            --light-text: #111827;
             --cyberpunk-pink: #ff007f;
             --cyberpunk-blue: #00b7eb;
+            --light-bg: #ffffff;
+            --light-text: #111827;
+            --dark-bg: #0a0a0a;
+            --matrix-glow: rgba(0, 255, 0, 0.5);
+            --error-red: #ff5555;
+            --fix-green: #55ff55;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            margin: 0;
-            background: var(--matrix-bg);
-            color: var(--matrix-green);
             font-family: 'Courier New', monospace;
             min-height: 100vh;
-            transition: background 0.3s, color 0.3s;
+            transition: all 0.3s;
+            position: relative;
             overflow-x: hidden;
+            background: var(--dark-bg);
+            color: var(--matrix-green);
         }
 
-        body.light-theme {
-            background: var(--light-bg);
-            color: var(--light-text);
+        /* Theme Styles */
+        .matrix-theme {
+            background: var(--dark-bg);
+            color: var(--matrix-green);
         }
 
-        body.cyberpunk-theme {
+        .cyberpunk-theme {
             background: #1a1a3d;
             color: var(--cyberpunk-pink);
         }
 
+        .light-theme {
+            background: var(--light-bg);
+            color: var(--light-text);
+        }
+
+        /* Matrix Rain Canvas */
         #matrix-canvas {
             position: fixed;
             top: 0;
@@ -50,232 +71,265 @@
             z-index: -1;
             opacity: 0.7;
             filter: blur(1px);
+            display: block;
         }
 
-        /* Enhanced Container Styles */
-        .matrix-chat {
-            max-width: 100%;
-            margin: 1rem;
-            padding: 1.5rem;
-            background: rgba(0, 10, 0, 0.85);
+        /* Chat Container */
+        .chat-container {
+            max-width: 1200px;
+            margin: 20px auto;
             border: 2px solid var(--matrix-green);
-            border-radius: 1rem;
-            box-shadow: 0 0 2rem var(--matrix-glow);
+            border-radius: 10px;
             min-height: 90vh;
             display: flex;
             flex-direction: column;
-            transition: all 0.3s;
-            animation: fadeIn 1s ease-in-out;
+            background: rgba(0, 10, 0, 0.85);
+            box-shadow: 0 0 20px var(--matrix-glow);
         }
 
-        .light-theme .matrix-chat {
+        .matrix-theme .chat-container {
+            border-color: var(--matrix-green);
+            background: rgba(0, 20, 0, 0.8);
+        }
+
+        .cyberpunk-theme .chat-container {
+            background: rgba(26, 26, 61, 0.85);
+            border-color: var(--cyberpunk-pink);
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.3);
+        }
+
+        .light-theme .chat-container {
             background: rgba(255, 255, 255, 0.95);
             border-color: #3b82f6;
-            box-shadow: 0 0 2rem rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
         }
 
-        .cyberpunk-theme .matrix-chat {
-            background: rgba(26, 26, 61, 0.95);
-            border-color: var(--cyberpunk-pink);
-            box-shadow: 0 0 2rem rgba(255, 0, 127, 0.3);
-        }
-
-        .chat-messages {
+        /* Messages Area */
+        .messages-container {
             flex: 1;
+            padding: 20px;
             overflow-y: auto;
-            padding: 1rem;
             scrollbar-width: thin;
             scrollbar-color: var(--matrix-green) transparent;
         }
 
-        .chat-messages::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .chat-messages::-webkit-scrollbar-thumb {
+        .matrix-theme .messages-container::-webkit-scrollbar-thumb {
             background: var(--matrix-green);
             border-radius: 3px;
         }
 
-        .light-theme .chat-messages::-webkit-scrollbar-thumb {
-            background: #3b82f6;
-        }
-
-        .cyberpunk-theme .chat-messages::-webkit-scrollbar-thumb {
+        .cyberpunk-theme .messages-container::-webkit-scrollbar-thumb {
             background: var(--cyberpunk-pink);
         }
 
-        /* Message Styles with Proper Wrapping */
+        .light-theme .messages-container::-webkit-scrollbar-thumb {
+            background: #3b82f6;
+        }
+
         .message {
-            margin: 1rem 0;
-            padding: 1.25rem;
-            border-radius: 0.75rem;
-            background: rgba(0, 30, 0, 0.15);
-            transition: all 0.2s;
-            max-width: 90%;
+            margin: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 80%;
+            animation: fadeIn 0.5s;
             word-break: break-word;
             white-space: pre-wrap;
         }
 
-        .message:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 20px var(--matrix-glow);
-        }
-
-        .light-theme .message {
-            background: rgba(0, 0, 0, 0.05);
+        .matrix-theme .message {
+            background: rgba(0, 20, 0, 0.8);
+            border-color: var(--matrix-green);
         }
 
         .cyberpunk-theme .message {
-            background: rgba(255, 0, 127, 0.1);
+            background: rgba(26, 26, 61, 0.8);
+            border-color: var(--cyberpunk-pink);
+        }
+
+        .light-theme .message {
+            background: rgba(241, 245, 249, 0.8);
+            border-color: #3b82f6;
         }
 
         .user-message {
             margin-left: auto;
             border-left: 3px solid var(--matrix-green);
-            background: rgba(0, 50, 0, 0.2);
-        }
-
-        .light-theme .user-message {
-            border-left-color: #3b82f6;
-        }
-
-        .cyberpunk-theme .user-message {
-            border-left-color: var(--cyberpunk-blue);
         }
 
         .bot-message {
             margin-right: auto;
             border-right: 3px solid var(--cyberpunk-blue);
-            background: rgba(0, 30, 50, 0.2);
         }
 
-        .light-theme .bot-message {
-            border-right-color: #3b82f6;
-        }
-
-        .cyberpunk-theme .bot-message {
-            border-right-color: var(--cyberpunk-pink);
-        }
-
-        .message pre {
-            white-space: pre-wrap;
-            word-break: break-word;
-            overflow-x: auto;
-        }
-
-        .timestamp {
-            font-size: 0.875rem;
-            opacity: 0.75;
-            margin-top: 0.5rem;
-            text-align: right;
-            color: var(--matrix-green);
-        }
-
-        .light-theme .timestamp {
-            color: #3b82f6;
-        }
-
-        .cyberpunk-theme .timestamp {
-            color: var(--cyberpunk-pink);
-        }
-
-        /* Perfect Code Block Containment */
+        /* Code Blocks */
         .code-block {
             position: relative;
-            margin: 1rem 0;
-            border: 2px solid var(--matrix-green);
-            border-radius: 0.5rem;
-            background: rgba(0, 10, 0, 0.7);
+            margin: 15px 0;
+            border-radius: 8px;
             overflow-x: auto;
-            max-width: 100%;
-            box-shadow: 0 4px 20px var(--matrix-glow);
-            transition: all 0.3s;
+            font-family: monospace;
+            border: 1px solid var(--matrix-green);
+            background: rgba(0, 20, 0, 0.9);
         }
 
-        .code-block:hover {
-            box-shadow: 0 8px 30px var(--matrix-glow);
-        }
-
-        .light-theme .code-block {
-            border-color: #3b82f6;
-            background: rgba(255, 255, 255, 0.9);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        .matrix-theme .code-block {
+            border-color: var(--matrix-green);
+            background: rgba(0, 20, 0, 0.9);
         }
 
         .cyberpunk-theme .code-block {
             border-color: var(--cyberpunk-pink);
             background: rgba(26, 26, 61, 0.9);
-            box-shadow: 0 4px 20px rgba(255, 0, 127, 0.3);
+        }
+
+        .light-theme .code-block {
+            border-color: #3b82f6;
+            background: rgba(241, 245, 249, 0.9);
         }
 
         .code-header {
-            padding: 0.5rem 1rem;
+            padding: 8px 15px;
             background: rgba(0, 0, 0, 0.3);
-            border-radius: 0.5rem 0.5rem 0 0;
-            font-size: 0.875rem;
+            border-bottom: 1px solid var(--matrix-green);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid var(--matrix-green);
         }
 
-        .light-theme .code-header {
-            background: rgba(59, 130, 246, 0.1);
-            border-bottom-color: #3b82f6;
+        .matrix-theme .code-header {
+            border-color: var(--matrix-green);
         }
 
         .cyberpunk-theme .code-header {
-            background: rgba(255, 0, 127, 0.1);
-            border-bottom-color: var(--cyberpunk-pink);
+            border-color: var(--cyberpunk-pink);
+        }
+
+        .light-theme .code-header {
+            border-color: #3b82f6;
         }
 
         .code-block pre {
             margin: 0;
-            padding: 1rem;
-            overflow-x: auto;
-            max-width: 100%;
-            tab-size: 4;
+            padding: 15px;
             white-space: pre-wrap;
             word-break: break-word;
         }
 
-        /* Enhanced Input Area */
-        .chat-input {
-            padding: 1.5rem 0 0;
-            border-top: 1px solid rgba(0, 255, 0, 0.1);
+        /* Diff Styling for Fixes */
+        .code-diff {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
         }
 
-        .light-theme .chat-input {
-            border-top-color: rgba(59, 130, 246, 0.1);
+        .code-diff .error-line {
+            background: var(--error-red);
+            color: white;
         }
 
-        .cyberpunk-theme .chat-input {
-            border-top-color: rgba(255, 0, 127, 0.1);
+        .code-diff .fix-line {
+            background: var(--fix-green);
+            color: black;
+        }
+
+        /* Toolbar */
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            border-top: 1px solid var(--matrix-green);
+            flex-wrap: wrap;
+        }
+
+        .matrix-theme .toolbar {
+            border-color: var(--matrix-green);
+        }
+
+        .cyberpunk-theme .toolbar {
+            border-color: var(--cyberpunk-pink);
+        }
+
+        .light-theme .toolbar {
+            border-color: #3b82f6;
+        }
+
+        button, select {
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Courier New', monospace;
+            border: 1px solid var(--matrix-green);
+            background: rgba(0, 255, 0, 0.1);
+            color: var(--matrix-green);
+        }
+
+        .matrix-theme button, .matrix-theme select {
+            border-color: var(--matrix-green);
+            background: rgba(0, 255, 0, 0.1);
+            color: var(--matrix-green);
+        }
+
+        .matrix-theme button:hover, .matrix-theme select:hover {
+            background: var(--matrix-green);
+            color: var(--dark-bg);
+            box-shadow: 0 0 10px var(--matrix-glow);
+        }
+
+        .cyberpunk-theme button, .cyberpunk-theme select {
+            border-color: var(--cyberpunk-pink);
+            background: rgba(255, 0, 127, 0.1);
+            color: var(--cyberpunk-pink);
+        }
+
+        .cyberpunk-theme button:hover, .cyberpunk-theme select:hover {
+            background: var(--cyberpunk-pink);
+            color: white;
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.5);
+        }
+
+        .light-theme button, .light-theme select {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+        }
+
+        .light-theme button:hover, .light-theme select:hover {
+            background: #3b82f6;
+            color: white;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Input Area */
+        .input-area {
+            display: flex;
+            gap: 10px;
+            padding: 15px;
+            border-top: 1px solid var(--matrix-green);
+            position: relative;
+        }
+
+        .matrix-theme .input-area {
+            border-color: var(--matrix-green);
+        }
+
+        .cyberpunk-theme .input-area {
+            border-color: var(--cyberpunk-pink);
+        }
+
+        .light-theme .input-area {
+            border-color: #3b82f6;
         }
 
         textarea {
-            width: 100%;
-            min-height: 6rem;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            background: rgba(0, 20, 0, 0.3);
+            flex: 1;
+            padding: 12px;
+            border-radius: 5px;
+            resize: vertical;
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 20, 0, 0.9);
             border: 1px solid var(--matrix-green);
             color: var(--matrix-green);
-            font-family: 'Courier New', monospace;
-            resize: vertical;
-            transition: all 0.3s;
-        }
-
-        textarea:focus {
-            box-shadow: 0 0 20px var(--matrix-glow);
-            outline: none;
-        }
-
-        .light-theme textarea {
-            background: rgba(255, 255, 255, 0.9);
-            border-color: #3b82f6;
-            color: var(--light-text);
         }
 
         .cyberpunk-theme textarea {
@@ -284,374 +338,451 @@
             color: var(--cyberpunk-blue);
         }
 
-        /* Beautiful Button Group */
-        .button-group {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 0.5rem;
-            margin: 1rem 0;
-        }
-
-        select, button {
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            background: rgba(0, 40, 0, 0.3);
-            border: 1px solid var(--matrix-green);
-            color: var(--matrix-green);
-            font-family: 'Courier New', monospace;
-            transition: all 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            position: relative;
-            overflow: hidden;
-        }
-
-        select:hover, button:hover {
-            background: var(--matrix-green);
-            color: var(--matrix-bg);
-            box-shadow: 0 0 15px var(--matrix-glow);
-            transform: translateY(-1px);
-        }
-
-        select::after, button::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(0, 255, 0, 0.2), transparent);
-            transition: left 0.5s;
-        }
-
-        select:hover::after, button:hover::after {
-            left: 100%;
-        }
-
-        .light-theme select, .light-theme button {
-            background: rgba(0, 0, 0, 0.05);
+        .light-theme textarea {
+            background: rgba(241, 245, 249, 0.9);
             border-color: #3b82f6;
-            color: #3b82f6;
+            color: var(--light-text);
         }
 
-        .light-theme select:hover, .light-theme button:hover {
-            background: #3b82f6;
-            color: white;
+        /* Suggestions Dropdown */
+        .suggestions-dropdown {
+            position: absolute;
+            bottom: 100%;
+            left: 15px;
+            right: 15px;
+            max-width: 100%;
+            background: rgba(0, 10, 0, 0.9);
+            border: 1px solid var(--matrix-green);
+            border-radius: 5px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 10;
+            box-shadow: 0 4px 10px var(--matrix-glow);
+            box-sizing: border-box;
         }
 
-        .cyberpunk-theme select, .cyberpunk-theme button {
-            background: rgba(255, 0, 127, 0.1);
+        .matrix-theme .suggestions-dropdown {
+            background: rgba(0, 20, 0, 0.9);
+            border-color: var(--matrix-green);
+        }
+
+        .cyberpunk-theme .suggestions-dropdown {
+            background: rgba(26, 26, 61, 0.9);
             border-color: var(--cyberpunk-pink);
-            color: var(--cyberpunk-pink);
         }
 
-        .cyberpunk-theme select:hover, .cyberpunk-theme button:hover {
+        .light-theme .suggestions-dropdown {
+            background: rgba(241, 245, 249, 0.9);
+            border-color: #3b82f6;
+        }
+
+        .suggestion-item {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--matrix-green);
+        }
+
+        .matrix-theme .suggestion-item {
+            border-color: var(--matrix-green);
+        }
+
+        .cyberpunk-theme .suggestion-item {
+            border-color: var(--cyberpunk-pink);
+        }
+
+        .light-theme .suggestion-item {
+            border-color: #3b82f6;
+        }
+
+        .suggestion-item:hover {
+            background: var(--matrix-green);
+            color: var(--dark-bg);
+        }
+
+        .cyberpunk-theme .suggestion-item:hover {
             background: var(--cyberpunk-pink);
             color: white;
         }
 
+        .light-theme .suggestion-item:hover {
+            background: #3b82f6;
+            color: white;
+        }
+
+        /* Sidebar */
         .sidebar {
             position: fixed;
-            left: -100%;
+            left: -300px;
             top: 0;
-            width: 20rem;
+            width: 300px;
             height: 100%;
             background: rgba(0, 10, 0, 0.95);
             border-right: 2px solid var(--matrix-green);
-            transition: left 0.3s ease-in-out;
-            padding: 1.5rem;
+            transition: left 0.3s;
+            padding: 20px;
             z-index: 1000;
-            box-sizing: border-box;
         }
 
         .sidebar.open {
             left: 0;
         }
 
-        .light-theme .sidebar {
-            background: rgba(255, 255, 255, 0.95);
-            border-right-color: #3b82f6;
-        }
-
         .cyberpunk-theme .sidebar {
             background: rgba(26, 26, 61, 0.95);
-            border-right-color: var(--cyberpunk-pink);
-        }
-
-        .sidebar-toggle {
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            z-index: 1001;
-            background: rgba(0, 10, 0, 0.7);
-            border: 2px solid var(--matrix-green);
-            color: var(--matrix-green);
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            transition: all 0.3s;
-        }
-
-        .sidebar-toggle:hover {
-            background: var(--matrix-green);
-            color: var(--matrix-bg);
-            box-shadow: 0 0 15px var(--matrix-glow);
-        }
-
-        .light-theme .sidebar-toggle {
-            background: rgba(255, 255, 255, 0.7);
-            border-color: #3b82f6;
-            color: #3b82f6;
-        }
-
-        .light-theme .sidebar-toggle:hover {
-            background: #3b82f6;
-            color: white;
-        }
-
-        .cyberpunk-theme .sidebar-toggle {
-            background: rgba(26, 26, 61, 0.7);
             border-color: var(--cyberpunk-pink);
-            color: var(--cyberpunk-pink);
         }
 
-        .cyberpunk-theme .sidebar-toggle:hover {
-            background: var(--cyberpunk-pink);
-            color: white;
+        .light-theme .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: #3b82f6;
         }
 
-        .file-upload-wrapper {
-            position: relative;
-        }
-
-        .file-upload-wrapper input[type="file"] {
-            position: absolute;
-            left: 0;
-            top: 0;
-            opacity: 0;
-            width: 100%;
-            height: 100%;
+        .snippet-item {
+            padding: 10px;
+            border: 1px solid var(--matrix-green);
+            margin-bottom: 10px;
             cursor: pointer;
+            border-radius: 5px;
         }
 
-        .file-upload-button::before {
-            content: '101010';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            color: var(--matrix-green);
-            opacity: 0;
-            font-size: 0.8em;
-            transition: opacity 0.3s;
-            animation: rain 1s linear infinite;
-        }
-
-        .file-upload-button:hover::before {
-            opacity: 0.2;
-        }
-
-        .output-panel {
-            background: rgba(0, 10, 0, 0.7);
-            border: 2px solid var(--matrix-green);
-            padding: 1rem;
-            margin-top: 1rem;
-            border-radius: 0.5rem;
-            color: var(--matrix-green);
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .light-theme .output-panel {
-            background: rgba(255, 255, 255, 0.9);
-            border-color: #3b82f6;
-            color: var(--light-text);
-        }
-
-        .cyberpunk-theme .output-panel {
-            background: rgba(26, 26, 61, 0.9);
-            border-color: var(--cyberpunk-pink);
-            color: var(--cyberpunk-blue);
-        }
-
-        .snippet-item, .tutorial-item, .project-item {
-            padding: 0.5rem;
-            border: 2px solid var(--matrix-green);
-            margin-bottom: 0.5rem;
-            cursor: pointer;
-            border-radius: 0.5rem;
-            transition: all 0.3s;
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .snippet-item:hover, .tutorial-item:hover, .project-item:hover {
-            background: rgba(0, 255, 0, 0.1);
-            box-shadow: 0 0 15px var(--matrix-glow);
-        }
-
-        .light-theme .snippet-item, .light-theme .tutorial-item, .light-theme .project-item {
-            border-color: #3b82f6;
-        }
-
-        .cyberpunk-theme .snippet-item, .cyberpunk-theme .tutorial-item, .cyberpunk-theme .project-item {
+        .cyberpunk-theme .snippet-item {
             border-color: var(--cyberpunk-pink);
         }
 
-        .suggestion {
-            position: absolute;
-            background: rgba(0, 10, 0, 0.9);
-            color: var(--matrix-green);
-            padding: 0.5rem;
-            border: 2px solid var(--matrix-green);
-            border-radius: 0.5rem;
-            z-index: 10;
-            max-width: 20rem;
-            box-shadow: 0 4px 20px var(--matrix-glow);
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-
-        .light-theme .suggestion {
-            background: rgba(255, 255, 255, 0.9);
-            color: var(--light-text);
+        .light-theme .snippet-item {
             border-color: #3b82f6;
-        }
-
-        .cyberpunk-theme .suggestion {
-            background: rgba(26, 26, 61, 0.9);
-            color: var(--cyberpunk-blue);
-            border-color: var(--cyberpunk-pink);
-        }
-
-        @keyframes rain {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(100%); }
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Mobile Optimization */
         @media (max-width: 768px) {
-            .matrix-chat {
-                margin: 0.5rem;
-                padding: 1rem;
+            .chat-container {
+                margin: 10px;
                 min-height: 95vh;
             }
 
-            .message {
-                max-width: 95%;
-                padding: 1rem;
+            .toolbar {
+                flex-direction: column;
             }
 
-            .user-message, .bot-message {
-                margin-left: 10%;
-                margin-right: 10%;
-            }
-
-            .button-group {
-                grid-template-columns: 1fr 1fr;
+            .input-area {
+                flex-direction: column;
             }
 
             .sidebar {
-                width: 16rem;
+                width: 250px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .chat-container {
+                margin: 5px;
+                min-height: 98vh;
             }
 
-            .sidebar-toggle {
-                top: 0.5rem;
-                left: 0.5rem;
-                padding: 0.25rem;
+            .input-area textarea {
+                font-size: 14px;
             }
 
-            textarea, select, button {
-                font-size: 0.875rem;
+            .toolbar button, .toolbar select {
+                font-size: 12px;
+                padding: 6px 10px;
             }
         }
     </style>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-CYKFB1BGKC"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-CYKFB1BGKC');
-    </script>
 </head>
-<body>
+<body class="matrix-theme">
     <canvas id="matrix-canvas"></canvas>
-
-    <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">
-        <i class="fas fa-bars"></i>
-    </button>
-
+    <div class="chat-container">
+        <div id="chat-messages" class="messages-container"></div>
+        <div class="toolbar">
+            <select id="theme-selector">
+                <option value="matrix">Matrix</option>
+                <option value="cyberpunk">Cyberpunk</option>
+                <option value="light">Light</option>
+            </select>
+            <select id="language-selector">
+                <option value="js">JavaScript</option>
+                <option value="py">Python</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="php">PHP</option>
+                <option value="ruby">Ruby</option>
+                <option value="go">Go</option>
+                <option value="ts">TypeScript</option>
+                <option value="sql">SQL</option>
+                <option value="rust">Rust</option>
+                <option value="kotlin">Kotlin</option>
+                <option value="swift">Swift</option>
+                <option value="other">Other</option>
+            </select>
+            <input type="file" id="file-upload" hidden accept=".js,.py,.java,.cpp,.html,.css,.php,.rb,.go,.ts,.sql,.rs,.kt,.swift,.txt,image/*">
+            <button onclick="document.getElementById('file-upload').click()">
+                <i class="fas fa-upload"></i> Upload File/Image
+            </button>
+            <button onclick="analyzeCode()"><i class="fas fa-search"></i> Analyze</button>
+            <button onclick="debugCode()"><i class="fas fa-bug"></i> Debug</button>
+            <button onclick="completeCode()"><i class="fas fa-code"></i> Complete</button>
+            <button onclick="teachMode()"><i class="fas fa-chalkboard-teacher"></i> Teach</button>
+            <button onclick="formatCode()"><i class="fas fa-broom"></i> Format</button>
+            <button onclick="saveSnippet()"><i class="fas fa-save"></i> Save Snippet</button>
+            <button onclick="clearChat()"><i class="fas fa-trash"></i> Clear Chat</button>
+            <button onclick="toggleSidebar()"><i class="fas fa-code"></i> Snippets</button>
+            <button onclick="vfs.createFile('test.txt', document.getElementById('user-input').value)">
+                <i class="fas fa-file"></i> Save to VFS
+            </button>
+            <button onclick="vfs.listFiles()">
+                <i class="fas fa-folder"></i> List Files
+            </button>
+            <button onclick="collab.createSession(document.getElementById('user-input').value)">
+                <i class="fas fa-share"></i> Create Session
+            </button>
+            <input id="session-id" placeholder="Enter session ID">
+            <button onclick="collab.joinSession(document.getElementById('session-id').value)">
+                <i class="fas fa-users"></i> Join Session
+            </button>
+        </div>
+        <div class="input-area">
+            <textarea id="user-input" placeholder="Yo, paste some code or ask me to debug, complete, or teach!"></textarea>
+            <div id="suggestions-dropdown" class="suggestions-dropdown hidden"></div>
+            <button onclick="processInput()"><i class="fas fa-paper-plane"></i> Send</button>
+        </div>
+    </div>
     <div class="sidebar" id="sidebar">
-        <h3 class="text-lg font-bold mt-4">Projects</h3>
-        <div class="project-list" id="project-list"></div>
-        <h3 class="text-lg font-bold mt-4">Snippets</h3>
-        <div class="snippet-list" id="snippet-list"></div>
-        <h3 class="text-lg font-bold mt-4">Tutorials</h3>
-        <div class="tutorial-list" id="tutorial-list"></div>
+        <h3>Snippets</h3>
+        <div id="snippet-list"></div>
     </div>
 
-    <div class="matrix-chat">
-        <div class="chat-messages" id="chat-messages">
-            <div class="message bot-message">
-                <div class="flex items-center gap-2 mb-2">
-                    <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                        <i class="fas fa-robot text-xs"></i>
-                    </div>
-                    <strong>CODEGPT</strong>
-                    <span class="timestamp">Just now</span>
-                </div>
-                <pre>Welcome to MxGPT CodeNode! Ask coding questions, share snippets, upload files, or start a project. I'm here to assist!</pre>
-            </div>
-        </div>
-
-        <div class="chat-input">
-            <div class="button-group">
-                <select id="language-selector" aria-label="Select programming language">
-                    <option value="javascript">JavaScript</option>
-                    <option value="python">Python</option>
-                    <option value="java">Java</option>
-                    <option value="cpp">C++</option>
-                    <option value="html">HTML</option>
-                    <option value="css">CSS</option>
-                    <option value="other">Other</option>
-                </select>
-                <div class="file-upload-wrapper">
-                    <button class="file-upload-button"><i class="fas fa-upload mr-2"></i>Upload</button>
-                    <input type="file" id="file-upload" accept=".js,.py,.java,.cpp,.html,.css,.txt" aria-label="Upload code file">
-                </div>
-                <button onclick="startVoiceInput()" aria-label="Start voice input"><i class="fas fa-microphone"></i> Voice</button>
-                <button onclick="createProject()" aria-label="Create new project"><i class="fas fa-folder-plus"></i> Project</button>
-                <button onclick="formatCode()" aria-label="Format code"><i class="fas fa-broom"></i> Format</button>
-                <button onclick="saveSnippet()" aria-label="Save snippet"><i class="fas fa-save"></i> Save</button>
-                <button onclick="shareSession()" aria-label="Share session"><i class="fas fa-share"></i> Share</button>
-                <button onclick="exportChat()" aria-label="Export chat"><i class="fas fa-download"></i> Export</button>
-                <select id="theme-selector" aria-label="Select theme">
-                    <option value="dark">Matrix</option>
-                    <option value="light">Light</option>
-                    <option value="cyberpunk">Cyberpunk</option>
-                </select>
-            </div>
-            <textarea id="user-input" placeholder="Ask a coding question, share a snippet, or describe your project..." aria-label="Enter your coding query or snippet"></textarea>
-            <div class="flex gap-2 mt-3">
-                <button onclick="sendMessage()" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all">
-                    <i class="fas fa-paper-plane mr-2"></i> Send
-                </button>
-                <button onclick="startVoiceInput()" class="px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
-                    <i class="fas fa-microphone"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js" defer></script>
     <script>
+        // Knowledge Base
+        const KnowledgeBase = {
+            greetings: ['hello', 'hi', 'hey', 'yo'],
+            codeGen: {
+                js: {
+                    'function': `function name(params) {\n    // Your code here\n    return result;\n}`,
+                    'loop': `for (let i = 0; i < length; i++) {\n    // Do stuff\n}`,
+                    'async': `async function name() {\n    const data = await fetch(url);\n    return data.json();\n}`,
+                    'class': `class Name {\n    constructor() {\n        this.prop = value;\n    }\n    method() {\n        return result;\n    }\n}`
+                },
+                py: {
+                    'function': `def name(params):\n    # Your code here\n    return result`,
+                    'loop': `for i in range(length):\n    # Do stuff`,
+                    'class': `class Name:\n    def __init__(self):\n        self.prop = value\n    def method(self):\n        return result`
+                },
+                java: {
+                    'method': `public Type name(Type params) {\n    // Your code here\n    return result;\n}`,
+                    'loop': `for (int i = 0; i < length; i++) {\n    // Do stuff\n}`,
+                    'class': `public class Name {\n    private Type prop;\n    public Name(Type prop) {\n        this.prop = prop;\n    }\n    public Type method() {\n        return result;\n    }\n}`
+                },
+                cpp: {
+                    'function': `Type name(Type params) {\n    // Your code here\n    return result;\n}`,
+                    'loop': `for (int i = 0; i < length; i++) {\n    // Do stuff\n}`,
+                    'class': `class Name {\nprivate:\n    Type prop;\npublic:\n    Name(Type prop) : prop(prop) {}\n    Type method() {\n        return result;\n    }\n};`
+                },
+                html: {
+                    'page': `<!DOCTYPE html>\n<html>\n<head>\n    <title>Title</title>\n</head>\n<body>\n    Content\n</body>\n</html>`,
+                    'div': `<div class="container">\n    Content\n</div>`
+                },
+                css: {
+                    'style': `.class {\n    property: value;\n}`,
+                    'flex': `.container {\n    display: flex;\n    justify-content: center;\n}`
+                },
+                php: {
+                    'function': `function name($params) {\n    // Your code here\n    return $result;\n}`,
+                    'loop': `for ($i = 0; $i < $length; $i++) {\n    // Do stuff\n}`
+                },
+                ruby: {
+                    'method': `def name(params)\n    # Your code here\n    result\nend`,
+                    'loop': `length.times do |i|\n    # Do stuff\nend`
+                },
+                go: {
+                    'function': `func name(params Type) Type {\n    // Your code here\n    return result\n}`,
+                    'loop': `for i := 0; i < length; i++ {\n    // Do stuff\n}`
+                },
+                ts: {
+                    'function': `function name(params: Type): Type {\n    // Your code here\n    return result;\n}`,
+                    'interface': `interface Name {\n    prop: Type;\n}`
+                },
+                sql: {
+                    'query': `SELECT column FROM table WHERE condition;\n`,
+                    'join': `SELECT a.column, b.column\nFROM table_a a\nJOIN table_b b ON a.id = b.id;`
+                },
+                rust: {
+                    'function': `fn name(param: Type) -> ReturnType {\n    // Code\n}`,
+                    'struct': `struct Name {\n    field: Type,\n}`,
+                    'loop': `for i in 0..10 {\n    println!("{}", i);\n}`
+                },
+                kotlin: {
+                    'function': `fun name(param: Type): ReturnType {\n    // Code\n}`,
+                    'class': `class Name(val property: Type) {\n    fun method() {\n        // Code\n    }\n}`
+                },
+                swift: {
+                    'function': `func name(param: Type) -> ReturnType {\n    // Code\n}`,
+                    'class': `class Name: Superclass {\n    var property: Type\n    \n    init(property: Type) {\n        self.property = property\n    }\n}`
+                }
+            },
+            errors: {
+                js: {
+                    'ReferenceError': 'Used a variable that’s not defined. Check if it’s declared or in scope.',
+                    'SyntaxError': 'Syntax is off—missing a bracket, semicolon, or something?',
+                    'TypeError': 'Wrong data type for that operation. Check your types.',
+                    'AsyncIssue': 'Async function might need `await` or proper promise handling.'
+                },
+                py: {
+                    'NameError': 'Variable doesn’t exist. Check spelling or declare it.',
+                    'SyntaxError': 'Syntax glitch—missing colons or wrong indentation?',
+                    'IndentationError': 'Indentation’s messy. Use 4 spaces consistently.'
+                },
+                java: {
+                    'NullPointerException': 'Accessing a null object. Check initialization.',
+                    'SyntaxError': 'Code won’t compile—missing semicolons or braces?'
+                },
+                cpp: {
+                    'Segmentation Fault': 'Bad memory access. Check pointers or array bounds.',
+                    'SyntaxError': 'Code’s broken—missing semicolon or brace?'
+                },
+                html: {
+                    'Missing Tag': 'HTML’s incomplete. Close all your tags.',
+                    'Invalid Attribute': 'That attribute’s not valid. Check HTML spec.'
+                },
+                css: {
+                    'Invalid Property': 'CSS property’s wrong. Check spelling or support.'
+                },
+                php: {
+                    'Undefined Variable': 'Used an undefined variable. Check your $vars.',
+                    'SyntaxError': 'Missing semicolon or closing tag?'
+                },
+                ruby: {
+                    'NameError': 'Variable or method not defined. Check spelling or scope.',
+                    'SyntaxError': 'Missing `end` or bad syntax?'
+                },
+                go: {
+                    'Panic': 'Code crashed. Check nil pointers or error handling.',
+                    'SyntaxError': 'Missing brace or semicolon?'
+                },
+                ts: {
+                    'TypeError': 'Type mismatch. Check TypeScript types/interfaces.',
+                    'SyntaxError': 'Missing type annotation or bad syntax?'
+                },
+                sql: {
+                    'SyntaxError': 'Query’s off. Missing commas or wrong keywords?',
+                    'Table Not Found': 'Table doesn’t exist. Verify name or database.'
+                },
+                rust: {
+                    'BorrowError': 'Violated Rust ownership rules. Check borrow checker.',
+                    'LifetimeError': 'Incorrect lifetime annotations. Verify references.',
+                    'TypeMismatch': 'Strict type mismatch. Check variable types.'
+                },
+                kotlin: {
+                    'NullPointer': 'Potential NPE. Use safe calls (?.) or null checks.',
+                    'TypeMismatch': 'Type mismatch. Check generic types and casts.'
+                },
+                swift: {
+                    'NilError': 'Unexpected nil value. Check optional unwrapping.',
+                    'TypeMismatch': 'Type mismatch. Verify type annotations.'
+                }
+            },
+            fixes: {
+                js: {
+                    'ReferenceError': 'Declare the variable or check scope.\n**Before:**\n```js\nconsole.log(x);\n```\n**After:**\n```js\nlet x = 0;\nconsole.log(x);\n```',
+                    'AsyncIssue': 'Add `await` or handle promises.\n**Before:**\n```js\nasync function test() { fetch(url); }\n```\n**After:**\n```js\nasync function test() { const res = await fetch(url); return res.json(); }\n```'
+                },
+                py: {
+                    'IndentationError': 'Fix indentation to 4 spaces.\n**Before:**\n```py\ndef test():\n  print("Hi")\n```\n**After:**\n```py\ndef test():\n    print("Hi")\n```'
+                },
+                java: {
+                    'NullPointerException': 'Initialize the object.\n**Before:**\n```java\nString s; s.length();\n```\n**After:**\n```java\nString s = ""; s.length();\n```'
+                },
+                cpp: {
+                    'Segmentation Fault': 'Check pointer validity.\n**Before:**\n```cpp\nint* p; *p = 5;\n```\n**After:**\n```cpp\nint* p = new int; *p = 5;\n```'
+                },
+                sql: {
+                    'SyntaxError': 'Fix query syntax.\n**Before:**\n```sql\nSELECT * FROM users WHERE id = 1\n```\n**After:**\n```sql\nSELECT * FROM users WHERE id = 1;\n```'
+                }
+            },
+            optimizations: {
+                js: ['Use `const` for immutable vars.', 'Avoid globals—keep it scoped.', 'Use arrow functions for concise code.'],
+                py: ['List comprehensions over loops.', 'Use f-strings for strings.', 'Extract duplicate code to functions.'],
+                java: ['StringBuilder for string concat.', 'Use generics for type safety.', 'Try-with-resources for resources.'],
+                cpp: ['Pass by reference for big objects.', 'Use const for safety.', 'Smart pointers over raw pointers.'],
+                html: ['Minify HTML for speed.', 'Use semantic tags for accessibility.'],
+                css: ['Combine selectors to slim CSS.', 'Use CSS variables for reuse.', 'Avoid !important.'],
+                php: ['Prepared statements for SQL safety.', 'Cache queries.', 'Avoid globals.'],
+                ruby: ['Symbols for keys.', 'Use blocks for brevity.', 'Keep code flat.'],
+                go: ['Goroutines for concurrency.', 'Explicit error handling.', 'Small, focused functions.'],
+                ts: ['Interfaces for types.', 'Strict mode for safety.', 'Avoid `any`.'],
+                sql: ['Index queried columns.', 'Optimize JOINs.', 'Normalize database.'],
+                rust: ['Use &str instead of String for slices', 'Prefer iterators over index-based loops', 'Use #[derive(Debug)] for structs'],
+                kotlin: ['Use scope functions (let/apply/run)', 'Prefer sealed classes for state management', 'Use coroutines for async operations'],
+                swift: ['Use optionals for safety', 'Leverage closures for concise code', 'Use SwiftUI for modern UI']
+            },
+            tutorials: {
+                js: {
+                    'function': {
+                        steps: [
+                            'Functions are reusable code blocks. Define ‘em once, call ‘em anytime.',
+                            'Check this:\n```js\nfunction greet(name) {\n    return `Yo ${name}!`;\n}\nconsole.log(greet("Coder"));\n```',
+                            'Try writing a function that does something cool.'
+                        ],
+                        exercise: 'Make a function `multiply(a, b)` that returns `a * b`. Test it with `multiply(3, 4)`.'
+                    },
+                    'closure': {
+                        steps: [
+                            'Closures let a function keep outer variables after the outer function’s gone.',
+                            'Here’s one:\n```js\nfunction outer() {\n    let count = 0;\n    return () => count++;\n}\nconst counter = outer();\nconsole.log(counter()); // 0\nconsole.log(counter()); // 1\n```',
+                            'Great for private state or counters.'
+                        ],
+                        exercise: 'Create a closure that tracks function calls.'
+                    }
+                },
+                py: {
+                    'function': {
+                        steps: [
+                            'Functions in Python are for reusable code. Use `def` to make ‘em.',
+                            'Like this:\n```py\ndef greet(name):\n    return f"Yo {name}!"\nprint(greet("Coder"))\n```',
+                            'Try a function that does math.'
+                        ],
+                        exercise: 'Write `square(num)` to return `num * num`. Test with `square(5)`.'
+                    }
+                },
+                java: {
+                    'class': {
+                        steps: [
+                            'Classes are blueprints for objects, bundling data and methods.',
+                            'Here’s one:\n```java\npublic class Person {\n    String name;\n    public Person(String name) {\n        this.name = name;\n    }\n    public String greet() {\n        return "Yo, I’m " + name;\n    }\n}\n```',
+                            'Try a class with a method.'
+                        ],
+                        exercise: 'Make a `Calculator` class with `add(a, b)` to return `a + b`.'
+                    }
+                },
+                rust: {
+                    'ownership': {
+                        steps: [
+                            'Rust ownership rules: 1. Each value has owner\n2. One owner at a time\n3. Owner out of scope → value dropped',
+                            'Example:\n```rust\nlet s1 = String::from("hello");\nlet s2 = s1; // s1 invalidated\n```',
+                            'Use borrowing (&) for temporary access\n```rust\nfn print_len(s: &String) {\n    println!("{}", s.len());\n}```'
+                        ],
+                        exercise: 'Create function transferring ownership of a Vec<i32>'
+                    }
+                }
+            },
+            security: {
+                web: ['Sanitize inputs to prevent XSS', 'Use CSP headers for content security', 'Validate file uploads thoroughly'],
+                crypto: ['Never roll your own crypto', 'Use Argon2 for password hashing', 'Rotate secrets regularly'],
+                general: ['Principle of least privilege', 'Defense in depth strategy', 'Regular dependency updates']
+            },
+            performance: {
+                frontend: ['Critical CSS in <head>', 'Lazy load non-critical resources', 'Use IntersectionObserver for scroll events'],
+                backend: ['Cache database queries', 'Use connection pooling', 'Implement rate limiting'],
+                algorithms: ['Choose proper Big-O complexity', 'Memoize expensive computations', 'Use spatial partitioning']
+            }
+        };
+
         // Matrix Rain Effect
         const canvas = document.getElementById('matrix-canvas');
         const ctx = canvas.getContext('2d');
@@ -659,23 +790,24 @@
         const fontSize = 14;
         const columns = Math.floor(window.innerWidth / fontSize);
         const drops = Array(columns).fill(1);
+        let lastFrame = 0;
 
-        function drawMatrix() {
+        function drawMatrix(timestamp) {
+            if (timestamp - lastFrame < 16) {
+                requestAnimationFrame(drawMatrix);
+                return;
+            }
+            lastFrame = timestamp;
             ctx.fillStyle = 'rgba(10, 10, 10, 0.05)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
             drops.forEach((y, x) => {
                 const text = chars[Math.floor(Math.random() * chars.length)];
                 ctx.fillStyle = Math.random() > 0.9 ? '#00cc00' : '#00ff00';
                 ctx.font = `${fontSize}px 'Courier New', monospace`;
                 ctx.fillText(text, x * fontSize, y * fontSize);
-
-                if (y * fontSize > canvas.height && Math.random() > 0.975) {
-                    drops[x] = 0;
-                }
+                if (y * fontSize > canvas.height && Math.random() > 0.975) drops[x] = 0;
                 drops[x]++;
             });
-
             requestAnimationFrame(drawMatrix);
         }
 
@@ -684,205 +816,394 @@
             canvas.height = window.innerHeight;
         }
 
+        function updateMatrixCanvas() {
+            canvas.style.display = document.body.classList.contains('matrix-theme') ? 'block' : 'none';
+        }
+
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
         drawMatrix();
+        updateMatrixCanvas();
 
-        // Sound Effects
-        function playClickSound() {
-            const audio = new Audio('https://freesound.org/data/previews/320/320147_5260872-lq.mp3');
-            audio.play().catch(() => {});
-        }
+        // Code Completer
+        class CodeCompleter {
+            complete(code, lang) {
+                const completions = [];
+                const lines = code.split('\n').map(line => line.trim());
+                const lastLine = lines[lines.length - 1];
 
-        // Theme Management
-        function setTheme(theme) {
-            document.body.className = '';
-            if (theme !== 'dark') document.body.classList.add(`${theme}-theme`);
-            localStorage.setItem('theme', theme);
-            playClickSound();
-        }
+                const context = {
+                    functionName: lastLine.match(/function\s+(\w+)/)?.[1] || lastLine.match(/def\s+(\w+)/)?.[1] || lastLine.match(/fn\s+(\w+)/)?.[1],
+                    className: lines.join(' ').match(/class\s+(\w+)/)?.[1],
+                    variables: lines.join(' ').match(/(let|const|var|self\.)\s+(\w+)/g)?.map(v => v.split(' ')[1]) || []
+                };
 
-        document.getElementById('theme-selector').addEventListener('change', (e) => {
-            setTheme(e.target.value);
-        });
-
-        if (localStorage.getItem('theme')) {
-            setTheme(localStorage.getItem('theme'));
-            document.getElementById('theme-selector').value = localStorage.getItem('theme');
-        }
-
-        // Sidebar Toggle
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('open');
-            const toggleButton = document.querySelector('.sidebar-toggle');
-            toggleButton.innerHTML = sidebar.classList.contains('open') ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
-            playClickSound();
-        }
-
-        // Chat Functionality
-        // *** INSERT YOUR OPENAI API KEY HERE ***
-        // Replace the placeholder below with your valid OpenAI API key (e.g., 'sk-your-actual-key-here')
-        // Get it from https://platform.openai.com/ after signing up or logging in
-        const API_KEY = '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'; // Placeholder key, replace with your own!
-        const API_ENDPOINT = 'https://api.openai.com/v1/chat/completions';
-        let conversationHistory = [];
-
-        // Updated function to call OpenAI API with gpt-3.5-turbo
-        // Handles rate limits (429) with user-friendly message
-        async function callOpenAI(prompt, retries = 3) {
-            // Loop to retry API call up to 'retries' times for rate limit (429) errors
-            for (let i = 0; i < retries; i++) {
-                try {
-                    // Set up a 10-second timeout for the fetch request
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-                    // Build the messages array with conversation history and new prompt
-                    const messages = [...conversationHistory, { role: "user", content: prompt }];
-
-                    // Make the API call to OpenAI
-                    const response = await fetch(API_ENDPOINT, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            // *** ENSURE YOUR API KEY IS SET ABOVE ***
-                            // The Bearer token uses the API_KEY you provide
-                            'Authorization': `Bearer ${API_KEY}`
-                        },
-                        body: JSON.stringify({
-                            model: "gpt-3.5-turbo", // Using gpt-3.5-turbo as requested
-                            messages,
-                            temperature: 0.7, // Controls response randomness
-                            max_tokens: 2000 // Limits response length
-                        }),
-                        signal: controller.signal // For timeout
-                    });
-
-                    clearTimeout(timeoutId); // Clear timeout if request completes
-
-                    // Check for HTTP errors (e.g., 401, 429, 500)
-                    if (!response.ok) {
-                        if (response.status === 429) {
-                            // Rate limit hit, return user-friendly message
-                            return "API limit reached, please try again later.";
+                if (lang in KnowledgeBase.codeGen) {
+                    for (const type in KnowledgeBase.codeGen[lang]) {
+                        if (lastLine.includes(type)) {
+                            completions.push({
+                                code: KnowledgeBase.codeGen[lang][type].replace('name', context.functionName || `my_${type}`),
+                                description: `Suggested ${type} for ${lang.toUpperCase()}`
+                            });
                         }
-                        const errorText = await response.text();
-                        throw new Error(`OpenAI API error: ${response.status} ${response.statusText} - ${errorText}`);
                     }
+                }
 
-                    // Parse response and validate
-                    const data = await response.json();
-                    if (!data.choices?.[0]?.message?.content) {
-                        throw new Error('Invalid OpenAI API response: No content found');
+                if (completions.length === 0) {
+                    for (const type in KnowledgeBase.codeGen[lang] || {}) {
+                        completions.push({
+                            code: KnowledgeBase.codeGen[lang][type],
+                            description: `Generic ${type} for ${lang.toUpperCase()}`
+                        });
                     }
+                }
 
-                    // Extract content and update conversation history
-                    const content = data.choices[0].message.content;
-                    conversationHistory.push({ role: "user", content: prompt }, { role: "assistant", content });
-                    if (conversationHistory.length > 10) conversationHistory = conversationHistory.slice(-10);
+                return completions;
+            }
+        }
 
-                    return content; // Return the API response
-                } catch (error) {
-                    console.error('Error calling OpenAI API:', error);
-                    if (i === retries - 1 || error.message.includes('429')) {
-                        // Return user-friendly message for rate limits or final retry
-                        return "API limit reached, please try again later.";
-                    }
-                    // Continue retrying for other errors
+        // Security Scanner
+        class SecurityScanner {
+            scan(code, lang) {
+                const issues = [];
+                if (/(eval\(|new Function)/.test(code)) {
+                    issues.push({
+                        category: 'web',
+                        severity: 'HIGH',
+                        message: 'Detected dangerous eval usage'
+                    });
+                }
+                if (lang === 'sql' && !/WHERE\s+\w+\s*=\s*/.test(code)) {
+                    issues.push({
+                        category: 'database',
+                        severity: 'CRITICAL',
+                        message: 'Potential SQL injection - use parameterized queries'
+                    });
+                }
+                return issues;
+            }
+        }
+
+        // Performance Analyzer
+        class PerformanceAnalyzer {
+            analyze(code, lang) {
+                return {
+                    metrics: {
+                        complexity: this.calculateCyclomaticComplexity(code),
+                        linesOfCode: code.split('\n').length,
+                        memoryUsage: this.estimateMemoryUsage(code, lang)
+                    },
+                    optimizations: KnowledgeBase.performance[lang] || []
+                };
+            }
+
+            calculateCyclomaticComplexity(code) {
+                const controlStructures = (code.match(/if|for|while|switch|catch/g) || []).length;
+                return controlStructures + 1;
+            }
+
+            estimateMemoryUsage(code, lang) {
+                const variables = (code.match(/(let|const|var|def|val)\s+\w+/g) || []).length;
+                return variables * 8;
+            }
+        }
+
+        // Code Reviewer
+        class CodeReviewer {
+            review(code, lang) {
+                const comments = [];
+                if (code.length > 500) {
+                    comments.push('Consider splitting into smaller functions');
+                }
+                if (lang === 'js' && !code.includes('use strict')) {
+                    comments.push('Add "use strict" directive');
+                }
+                return comments;
+            }
+        }
+
+        // Virtual File System
+        class VirtualFileSystem {
+            constructor() {
+                this.files = new Map();
+                this.currentDir = '/';
+            }
+
+            createFile(path, content) {
+                this.files.set(this.currentDir + path, content);
+                addMessage(`Created file: ${path}`, false);
+            }
+
+            readFile(path) {
+                const content = this.files.get(this.currentDir + path);
+                if (content) {
+                    addMessage(`File ${path}:\n\`\`\`\n${content}\n\`\`\``, false);
+                    return content;
+                }
+                addMessage(`File ${path} not found`, false);
+                return null;
+            }
+
+            listFiles() {
+                const files = Array.from(this.files.keys()).filter(p => p.startsWith(this.currentDir));
+                addMessage(`Files in ${this.currentDir}:\n${files.join('\n')}`, false);
+            }
+        }
+
+        // Collaboration System
+        class CollaborationSystem {
+            constructor() {
+                this.sessions = new Map();
+            }
+
+            createSession(code) {
+                const sessionId = Math.random().toString(36).slice(2);
+                this.sessions.set(sessionId, code);
+                addMessage(`Session created! Share this ID: ${sessionId}`, false);
+                return sessionId;
+            }
+
+            joinSession(sessionId) {
+                const code = this.sessions.get(sessionId);
+                if (code) {
+                    document.getElementById('user-input').value = code;
+                    addMessage(`Joined session ${sessionId}`, false);
+                } else {
+                    addMessage(`Session ${sessionId} not found`, false);
                 }
             }
-            // Fallback if all retries fail
-            return "API limit reached, please try again later.";
         }
 
-        async function sendMessage() {
-            const input = document.getElementById('user-input');
-            const language = document.getElementById('language-selector').value;
-            const message = input.value.trim();
-            if (!message) return;
-
-            playClickSound();
-            addMessage(message, true, language);
-            input.value = '';
-            const loadingMsg = addMessage('Processing...', false);
-
-            // *** API KEY USED HERE ***
-            // The callOpenAI function uses the API_KEY you set above
-            const prompt = `As a code expert, respond to the following in the context of ${language}: "${message}"`;
-            const response = await callOpenAI(prompt);
-            loadingMsg.remove();
-            addMessage(response, false, language);
-
-            if (message.toLowerCase().includes('tutorial')) {
-                addTutorial(message);
+        // Conversational AI
+        class CodeVisionAI {
+            constructor() {
+                this.completer = new CodeCompleter();
+                this.securityScanner = new SecurityScanner();
+                this.performanceAnalyzer = new PerformanceAnalyzer();
+                this.codeReviewer = new CodeReviewer();
             }
-            if (message.includes('```')) {
-                await reviewCode(message, language);
-                await debugCode(message, language);
+
+            processQuery(query, lang, codeOnly = false) {
+                query = query.toLowerCase().trim();
+
+                if (codeOnly) {
+                    const completions = this.completer.complete(query, lang);
+                    return completions.length > 0
+                        ? completions.map(c => `**Suggestion:** ${c.description}\n\`\`\`${lang}\n${c.code}\n\`\`\``).join('\n')
+                        : `No completions found for this ${lang.toUpperCase()} code. Try something like "function myFunc(" or ask for help!`;
+                }
+
+                if (KnowledgeBase.greetings.some(g => query.includes(g))) {
+                    return `Yo, what’s up? Ready to crush some ${lang.toUpperCase()} code?`;
+                }
+
+                if (query.includes('write') || query.includes('create') || query.includes('generate')) {
+                    for (const type in KnowledgeBase.codeGen[lang]) {
+                        if (query.includes(type)) {
+                            return `Here’s a slick ${type} in ${lang.toUpperCase()}:\n\`\`\`${lang}\n${KnowledgeBase.codeGen[lang][type]}\n\`\`\`\nNeed to tweak it?`;
+                        }
+                    }
+                    return `What kinda ${lang.toUpperCase()} code you want? Like a function, class, or loop?`;
+                }
+
+                if (query.includes('explain') || query.includes('what is') || query.includes('how does')) {
+                    for (const topic in KnowledgeBase.tutorials[lang] || {}) {
+                        if (query.includes(topic)) {
+                            const tutorial = KnowledgeBase.tutorials[lang][topic];
+                            return `Lemme break down ${topic} in ${lang.toUpperCase()}:\n${tutorial.steps.join('\n\n')}\n\n**Try this:** ${tutorial.exercise}`;
+                        }
+                    }
+                    return `What’s puzzling you in ${lang.toUpperCase()}? Share code or ask about stuff like "closures".`;
+                }
+
+                if (query.includes('teach') || query.includes('learn')) {
+                    for (const topic in KnowledgeBase.tutorials[lang] || {}) {
+                        if (query.includes(topic)) {
+                            const tutorial = KnowledgeBase.tutorials[lang][topic];
+                            return `Let’s dive into ${topic} in ${lang.toUpperCase()}!\n${tutorial.steps.join('\n\n')}\n\n**Your turn:** ${tutorial.exercise}`;
+                        }
+                    }
+                    return `Wanna learn ${lang.toUpperCase()}? Say something like "teach me functions".`;
+                }
+
+                if (query.includes('debug') || query.includes('fix') || query.includes('error')) {
+                    return `Got buggy ${lang.toUpperCase()} code? Paste it, and I’ll help squash those bugs!`;
+                }
+
+                if (query.includes('complete') || query.includes('suggest')) {
+                    return `Drop some ${lang.toUpperCase()} code, and I’ll suggest completions like GitHub Copilot!`;
+                }
+
+                if (query.includes('how to') || query.includes('best way')) {
+                    return `I got you in ${lang.toUpperCase()}! For example: ${KnowledgeBase.optimizations[lang][0]}\nWhat’s the plan?`;
+                }
+
+                return `I’m here to code like a boss in ${lang.toUpperCase()}! Ask me to write, debug, complete, or teach. What’s good?`;
+            }
+
+            analyzeCode(code, lang) {
+                let results = { errors: [], warnings: [], suggestions: [] };
+
+                if (lang === 'js') {
+                    try {
+                        esprima.parseScript(code);
+                    } catch (e) {
+                        results.errors.push(`SyntaxError: ${e.description} at line ${e.lineNumber}`);
+                    }
+                    if (!code.includes(';')) results.warnings.push('Missing semicolons—could mess things up.');
+                    if (code.includes('var')) results.suggestions.push('Use `let` or `const` instead of `var`.');
+                } else if (lang === 'py') {
+                    if (!/^\s{4}/.test(code)) results.warnings.push('Inconsistent indentation—use 4 spaces.');
+                    if (code.includes('print ')) results.suggestions.push('Use `print()` for Python 3.');
+                } else if (lang === 'rust') {
+                    if (code.includes('let') && !code.includes(':')) results.warnings.push('Missing type annotations.');
+                }
+
+                results.suggestions.push(...KnowledgeBase.optimizations[lang] || []);
+                return results;
+            }
+
+            debugCode(code, lang) {
+                const issues = [];
+                const fixes = [];
+
+                for (const error in KnowledgeBase.errors[lang]) {
+                    if (code.match(new RegExp(error, 'i'))) {
+                        issues.push(`${error}: ${KnowledgeBase.errors[lang][error]}`);
+                        if (KnowledgeBase.fixes[lang] && KnowledgeBase.fixes[lang][error]) {
+                            fixes.push(KnowledgeBase.fixes[lang][error]);
+                        }
+                    }
+                }
+
+                if (lang === 'js') {
+                    if (code.includes('async') && !code.includes('await')) {
+                        issues.push('AsyncIssue: Async function missing `await`.');
+                        fixes.push(KnowledgeBase.fixes.js.AsyncIssue);
+                    }
+                } else if (lang === 'sql') {
+                    if (code.includes('DELETE') && !code.includes('WHERE')) {
+                        issues.push('Safety: DELETE without WHERE—risks wiping entire table.');
+                    }
+                }
+
+                return { issues, fixes };
+            }
+
+            analyzeSecurity(code, lang) {
+                const issues = this.securityScanner.scan(code, lang);
+                return {
+                    securityIssues: issues,
+                    recommendations: issues.map(issue => ({
+                        message: issue.message,
+                        fix: KnowledgeBase.security[issue.category]?.join('\n- ') || 'Follow general security practices.'
+                    }))
+                };
+            }
+
+            analyzePerformance(code, lang) {
+                return this.performanceAnalyzer.analyze(code, lang);
+            }
+
+            codeReview(code, lang) {
+                return this.codeReviewer.review(code, lang);
+            }
+
+            suggestPatterns(code, lang) {
+                const patterns = {
+                    js: ['Microservices', 'Serverless', 'Event Sourcing'],
+                    py: ['MVVM', 'Dependency Injection', 'CQRS'],
+                    rust: ['Actor Model', 'Zero-Cost Abstractions', 'RAII']
+                };
+                return patterns[lang] || ['Modular Architecture', 'Layered Architecture'];
+            }
+
+            refactorCode(code, lang, strategy) {
+                return code; // Stub
+            }
+
+            generateDocs(code, lang) {
+                return `/** Generated docs for ${lang} */\n`; // Stub
+            }
+
+            translateCode(code, fromLang, toLang) {
+                return code; // Stub
+            }
+
+            detectVulnerabilities(code, lang) {
+                return []; // Stub
+            }
+
+            enforceStyle(code, lang, config) {
+                return code; // Stub
+            }
+
+            generateTests(code, lang, framework) {
+                return ''; // Stub
             }
         }
 
-        function addMessage(content, isUser, language = 'other') {
-            const chat = document.getElementById('chat-messages');
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+        // Initialize Systems
+        const ai = new CodeVisionAI();
+        const vfs = new VirtualFileSystem();
+        const collab = new CollaborationSystem();
 
-            const timestamp = new Date().toLocaleTimeString();
-            const headerDiv = document.createElement('div');
-            headerDiv.className = 'flex items-center gap-2 mb-2';
-            headerDiv.innerHTML = `
-                <div class="w-6 h-6 ${isUser ? 'bg-green-500' : 'bg-blue-500'} rounded-full flex items-center justify-center">
-                    <i class="fas ${isUser ? 'fa-user' : 'fa-robot'} text-xs"></i>
-                </div>
-                <strong>${isUser ? 'USER' : 'CODEGPT'}</strong>
-                <span class="timestamp">${timestamp}</span>
-            `;
+        // OCR Processor
+        async function processImage(file) {
+            if (file.size > 5 * 1024 * 1024) {
+                addMessage('Image too large! Max 5MB.', false);
+                return null;
+            }
+            try {
+                addMessage('Scanning image...', false);
+                const { data: { text } } = await Tesseract.recognize(file, 'eng', {
+                    logger: m => console.log(m)
+                });
+                const cleanedText = text.replace(/\s+/g, ' ').trim();
+                const lang = detectLanguage(cleanedText);
+                addMessage(`Extracted code:\n\`\`\`${lang}\n${cleanedText}\n\`\`\``, true, lang);
+                document.getElementById('user-input').value = cleanedText;
+                return { text: cleanedText, lang };
+            } catch (error) {
+                addMessage(`Image scan failed: ${error.message}`, false);
+                return null;
+            }
+        }
 
-            const codeRegex = /```(\w+)?\n([\s\S]*?)```/g;
-            let htmlContent = '';
-            let lastIndex = 0;
-            let match;
+        // UI Functions
+        function addMessage(content, isUser, lang = 'other') {
+            const messagesDiv = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+            messageDiv.innerHTML = formatContent(content, lang);
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            Prism.highlightAllUnder(messageDiv);
+        }
 
-            while ((match = codeRegex.exec(content)) !== null) {
-                const lang = match[1] || language;
-                const code = match[2];
-                htmlContent += content.slice(lastIndex, match.index);
-                htmlContent += `
+        function formatContent(content, lang) {
+            return content.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, language, code) => {
+                language = language || lang;
+                return `
                     <div class="code-block">
                         <div class="code-header">
-                            <span>${lang}</span>
-                            <div class="flex gap-2">
-                                <button class="px-2 py-1 text-sm" onclick="copyCode(this)"><i class="fas fa-copy mr-1"></i>Copy</button>
-                                ${lang === 'javascript' || lang === 'python' || lang === 'html' ? `<button class="px-2 py-1 text-sm" onclick="runCode(this, '${lang}')"><i class="fas fa-play mr-1"></i>Run</button>` : ''}
-                                <button class="px-2 py-1 text-sm" onclick="editCode(this)"><i class="fas fa-edit mr-1"></i>Edit</button>
-                                <button class="px-2 py-1 text-sm" onclick="saveSnippet(this)"><i class="fas fa-save mr-1"></i>Save</button>
-                                <button class="px-2 py-1 text-sm" onclick="saveVersion(this)"><i class="fas fa-code-branch mr-1"></i>Version</button>
+                            <span>${language.toUpperCase()}</span>
+                            <div>
+                                <button onclick="copyCode(this)">Copy</button>
+                                ${language === 'js' || language === 'html' ? `<button onclick="runCode(this, '${language}')">Run</button>` : ''}
                             </div>
                         </div>
-                        <pre><code class="language-${lang}">${code}</code></pre>
+                        <pre><code class="language-${language}">${code}</code></pre>
                         <div class="output-panel hidden"></div>
-                    </div>
-                `;
-                lastIndex = match.index + match[0].length;
-            }
-            htmlContent += content.slice(lastIndex);
-
-            msgDiv.appendChild(headerDiv);
-            msgDiv.innerHTML += `<pre>${htmlContent}</pre>`;
-            chat.appendChild(msgDiv);
-            chat.scrollTop = chat.scrollHeight;
-
-            Prism.highlightAllUnder(msgDiv);
-            return msgDiv;
+                    </div>`;
+            });
         }
 
         function copyCode(button) {
             const code = button.closest('.code-block').querySelector('code').textContent;
             navigator.clipboard.writeText(code);
-            playClickSound();
-            button.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
-            setTimeout(() => button.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy', 2000);
+            button.textContent = 'Copied!';
+            setTimeout(() => button.textContent = 'Copy', 2000);
         }
 
         async function runCode(button, language) {
@@ -891,309 +1212,295 @@
             outputPanel.classList.remove('hidden');
             outputPanel.textContent = 'Running...';
 
-            const startTime = performance.now();
-            try {
-                if (language === 'javascript') {
-                    const originalConsoleLog = console.log;
-                    let output = '';
-                    console.log = (...args) => output += args.join(' ') + '\n';
-                    eval(code);
-                    console.log = originalConsoleLog;
-                    outputPanel.textContent = output || 'No output';
-                } else if (language === 'python') {
-                    outputPanel.textContent = 'Python execution not supported in browser. Use an external IDE.';
-                } else if (language === 'html') {
-                    const playground = document.createElement('div');
-                    playground.className = 'flex flex-col gap-2';
-                    playground.innerHTML = `
-                        <textarea class="w-full p-2 bg-gray-800 text-white rounded">${code}</textarea>
-                        <iframe class="w-full h-64 bg-white" sandbox="allow-scripts"></iframe>
-                    `;
-                    outputPanel.appendChild(playground);
-                    const iframe = playground.querySelector('iframe');
-                    iframe.contentDocument.open();
-                    iframe.contentDocument.write(code);
-                    iframe.contentDocument.close();
-                    outputPanel.textContent = '';
-                } else {
-                    outputPanel.textContent = 'Execution not supported for this language.';
-                }
-                const endTime = performance.now();
-                outputPanel.textContent += `\nExecution time: ${(endTime - startTime).toFixed(2)}ms`;
-                analyzeCode(code, language, outputPanel);
-            } catch (error) {
-                outputPanel.textContent = `Error: ${error.message}`;
+            if (language === 'js') {
+                const workerCode = `
+                    self.onmessage = function(e) {
+                        let output = '';
+                        const console = {
+                            log: (...args) => output += args.join(' ') + '\\n'
+                        };
+                        try {
+                            eval(e.data);
+                            self.postMessage(output || 'No output');
+                        } catch (error) {
+                            self.postMessage('Error: ' + error.message);
+                        }
+                    };
+                `;
+                const blob = new Blob([workerCode], { type: 'application/javascript' });
+                const worker = new Worker(URL.createObjectURL(blob));
+                worker.postMessage(code);
+                worker.onmessage = (e) => {
+                    outputPanel.textContent = e.data;
+                    worker.terminate();
+                };
+            } else if (language === 'html') {
+                outputPanel.innerHTML = `<iframe class="w-full h-64 bg-white" sandbox="allow-scripts"></iframe>`;
+                const iframe = outputPanel.querySelector('iframe');
+                iframe.contentDocument.open();
+                iframe.contentDocument.write(code);
+                iframe.contentDocument.close();
+            } else {
+                outputPanel.textContent = 'Can’t run this language here!';
             }
         }
 
-        function editCode(button) {
-            const codeBlock = button.closest('.code-block');
-            const codeElement = codeBlock.querySelector('code');
-            const code = codeElement.textContent;
-            const textarea = document.createElement('textarea');
-            textarea.value = code;
-            textarea.className = 'w-full p-2 bg-gray-800 text-white rounded';
-            codeBlock.replaceChild(textarea, codeElement.parentElement);
-            button.innerHTML = '<i class="fas fa-save mr-1"></i>Save';
-            button.onclick = () => saveCode(button, textarea);
-        }
-
-        function saveCode(button, textarea) {
-            const codeBlock = button.closest('.code-block');
-            const lang = codeBlock.querySelector('.code-header span').textContent;
-            const pre = document.createElement('pre');
-            const code = document.createElement('code');
-            code.className = `language-${lang}`;
-            code.textContent = textarea.value;
-            pre.appendChild(code);
-            codeBlock.replaceChild(pre, textarea);
-            button.innerHTML = '<i class="fas fa-edit mr-1"></i>Edit';
-            button.onclick = () => editCode(button);
-            Prism.highlightAllUnder(codeBlock);
-        }
-
-        function saveSnippet(button) {
-            const code = button?.closest('.code-block')?.querySelector('code')?.textContent;
-            const lang = button?.closest('.code-block')?.querySelector('.code-header span')?.textContent;
-            if (!code || !lang) {
-                const snippets = JSON.parse(localStorage.getItem('snippets') || '[]');
-                snippets.push({ code: '/* New Snippet */', lang: 'javascript', name: `Snippet ${snippets.length + 1}` });
-                localStorage.setItem('snippets', JSON.stringify(snippets));
-                updateSnippetList();
-                playClickSound();
-                return;
-            }
-            const snippets = JSON.parse(localStorage.getItem('snippets') || '[]');
-            snippets.push({ code, lang, name: `Snippet ${snippets.length + 1}` });
-            localStorage.setItem('snippets', JSON.stringify(snippets));
-            updateSnippetList();
-            playClickSound();
-        }
-
-        function saveVersion(button) {
-            const code = button.closest('.code-block').querySelector('code').textContent;
-            const lang = button.closest('.code-block').querySelector('.code-header span').textContent;
-            const versions = JSON.parse(localStorage.getItem('versions') || '[]');
-            versions.push({ code, lang, timestamp: new Date().toISOString() });
-            localStorage.setItem('versions', JSON.stringify(versions));
-            addMessage(`Version saved at ${new Date().toLocaleTimeString()}`, false);
-            playClickSound();
-        }
-
-        document.getElementById('file-upload').addEventListener('change', async (event) => {
-            const file = event.target.files[0];
+        // File Handling
+        document.getElementById('file-upload').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
             if (!file) return;
 
-            const button = document.querySelector('.file-upload-button');
-            button.classList.add('animate-pulse');
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                const content = e.target.result;
-                const language = file.name.split('.').pop();
-                addMessage(`File: ${file.name}\n\`\`\`${language}\n${content}\n\`\`\``, true, language);
-                button.classList.remove('animate-pulse');
-            };
-            reader.readAsText(file);
+            if (file.type.startsWith('image/')) {
+                await processImage(file);
+            } else {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const content = event.target.result;
+                    const lang = detectLanguage(content);
+                    addMessage(`Loaded ${file.name}:\n\`\`\`${lang}\n${content}\n\`\`\``, true, lang);
+                    document.getElementById('user-input').value = content;
+                };
+                reader.readAsText(file);
+            }
         });
 
-        function startVoiceInput() {
-            if (!('webkitSpeechRecognition' in window)) {
-                addMessage('Voice input not supported in this browser.', false);
-                return;
+        // Code Processing
+        function processInput() {
+            const input = document.getElementById('user-input').value.trim();
+            const lang = document.getElementById('language-selector').value;
+            if (!input) return;
+
+            addMessage(input, true, lang);
+            let response;
+
+            const codeMatch = input.match(/```(\w+)?\n([\s\S]*?)```/);
+            if (codeMatch) {
+                const codeLang = codeMatch[1] || lang;
+                const code = codeMatch[2];
+                const text = input.replace(codeMatch[0], '').trim().toLowerCase();
+
+                if (text.includes('debug') || text.includes('fix')) {
+                    const { issues, fixes } = ai.debugCode(code, codeLang);
+                    response = `Debugging your ${codeLang.toUpperCase()} code:\n`;
+                    response += issues.length > 0 ? `Issues found:\n- ${issues.join('\n- ')}` : 'No major bugs—code’s solid!';
+                    if (fixes.length > 0) {
+                        response += `\n\n**Suggested Fixes:**\n${fixes.join('\n\n')}`;
+                    }
+                } else if (text.includes('complete') || text.includes('suggest')) {
+                    response = ai.processQuery(code, codeLang, true);
+                } else if (text.includes('analyze')) {
+                    const analysis = ai.analyzeCode(code, codeLang);
+                    response = `Analyzing your ${codeLang.toUpperCase()} code:\n`;
+                    response += `Errors: ${analysis.errors.join(', ') || 'None'}\n`;
+                    response += `Warnings: ${analysis.warnings.join(', ') || 'None'}\n`;
+                    response += `Suggestions:\n- ${analysis.suggestions.join('\n- ')}`;
+                } else {
+                    response = `Got your ${codeLang.toUpperCase()} code! Wanna debug, complete, or analyze it?`;
+                }
+            } else {
+                response = ai.processQuery(input, lang);
             }
 
-            const recognition = new webkitSpeechRecognition();
-            recognition.continuous = false;
-            recognition.interimResults = false;
-            recognition.lang = 'en-US';
-
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                document.getElementById('user-input').value = transcript;
-                sendMessage();
-            };
-
-            recognition.onerror = (event) => {
-                addMessage(`Voice input error: ${event.error}`, false);
-            };
-
-            recognition.start();
-            playClickSound();
+            addMessage(response, false, lang);
+            document.getElementById('user-input').value = '';
         }
 
-        async function reviewCode(code, language) {
-            // *** API KEY USED HERE ***
-            // The callOpenAI function uses the API_KEY you set above
-            const prompt = `Review the following ${language} code for errors, style issues, and optimizations:\n\`\`\`${language}\n${code}\n\`\`\``;
-            const review = await callOpenAI(prompt);
-            addMessage(`Code Review:\n${review}`, false);
+        function analyzeCode() {
+            const code = document.getElementById('user-input').value;
+            const lang = document.getElementById('language-selector').value;
+            if (!code) return addMessage('Yo, paste some code to analyze!', false);
+
+            const analysis = ai.analyzeCode(code, lang);
+            let response = `Here’s the lowdown on your ${lang.toUpperCase()} code:\n`;
+            response += `Errors: ${analysis.errors.join(', ') || 'None'}\n`;
+            response += `Warnings: ${analysis.warnings.join(', ') || 'None'}\n`;
+            response += `Suggestions:\n- ${analysis.suggestions.join('\n- ')}`;
+            addMessage(response, false);
         }
 
-        async function debugCode(code, language) {
-            // *** API KEY USED HERE ***
-            // The callOpenAI function uses the API_KEY you set above
-            const prompt = `Identify potential errors in the following ${language} code and suggest fixes:\n\`\`\`${language}\n${code}\n\`\`\``;
-            const debug = await callOpenAI(prompt);
-            addMessage(`Debug Suggestions:\n${debug}`, false);
+        function debugCode() {
+            const code = document.getElementById('user-input').value;
+            const lang = document.getElementById('language-selector').value;
+            if (!code) return addMessage('Need code to debug, my dude!', false);
+
+            const { issues, fixes } = ai.debugCode(code, lang);
+            let response = `Debugging your ${lang.toUpperCase()} code:\n`;
+            response += issues.length > 0 ? `Issues found:\n- ${issues.join('\n- ')}` : 'No bugs found—nice work!';
+            if (fixes.length > 0) {
+                response += `\n\n**Suggested Fixes:**\n${fixes.join('\n\n')}`;
+            }
+            addMessage(response, false);
+        }
+
+        function completeCode() {
+            const code = document.getElementById('user-input').value;
+            const lang = document.getElementById('language-selector').value;
+            if (!code) return addMessage('Drop some code to complete, yo!', false);
+
+            const response = ai.processQuery(code, lang, true);
+            addMessage(response, false);
+        }
+
+        function teachMode() {
+            const input = document.getElementById('user-input').value.toLowerCase().trim();
+            const lang = document.getElementById('language-selector').value;
+            if (!input) return addMessage(`What do you wanna learn in ${lang.toUpperCase()}? Try "teach functions".`, false);
+
+            for (const topic in KnowledgeBase.tutorials[lang] || {}) {
+                if (input.includes(topic)) {
+                    const tutorial = KnowledgeBase.tutorials[lang][topic];
+                    addMessage(`Let’s learn ${topic} in ${lang.toUpperCase()}!\n${tutorial.steps.join('\n\n')}\n\n**Your turn:** ${tutorial.exercise}`, false);
+                    return;
+                }
+            }
+            addMessage(`I can teach tons in ${lang.toUpperCase()}! Try "teach functions" or "learn classes".`, false);
         }
 
         function formatCode() {
             const input = document.getElementById('user-input');
             let code = input.value.trim();
-            if (!code) return;
+            const lang = document.getElementById('language-selector').value;
+            if (!code) return addMessage('No code to format!', false);
 
-            const language = document.getElementById('language-selector').value;
-            if (language === 'javascript' || language === 'html' || language === 'css') {
+            if (lang === 'js' || lang === 'ts' || lang === 'java' || lang === 'cpp') {
                 code = code.replace(/\n\s*/g, '\n').replace(/\{\s*/g, '{ ').replace(/\}\s*/g, ' }').trim();
-                input.value = code;
-                addMessage(`Formatted ${language} code in input.`, false);
+            } else if (lang === 'py') {
+                code = code.replace(/\n\s*/g, '\n').replace(/^\s+/gm, '    ').trim();
+            } else if (lang === 'html' || lang === 'css') {
+                code = code.replace(/\n\s*/g, '\n').replace(/>\s*</g, '>\n<').trim();
             } else {
-                addMessage('Formatting not supported for this language.', false);
+                return addMessage('Formatting not supported for this language.', false);
             }
-            playClickSound();
+            input.value = code;
+            addMessage(`Formatted your ${lang.toUpperCase()} code—looks clean!`, false);
         }
 
-        function analyzeCode(code, language, outputPanel) {
-            const lines = code.split('\n').length;
-            const complexity = Math.min(Math.round(code.length / 100), 10);
-            outputPanel.textContent += `\nMetrics: ${lines} lines, Complexity Score: ${complexity}/10`;
-        }
+        function saveSnippet() {
+            const code = document.getElementById('user-input').value;
+            const lang = document.getElementById('language-selector').value;
+            if (!code) return addMessage('No code to save!', false);
 
-        function addTutorial(query) {
-            const tutorials = JSON.parse(localStorage.getItem('tutorials') || '[]');
-            tutorials.push({ name: `Tutorial: ${query.slice(0, 20)}...`, steps: ['Step 1: Start', 'Step 2: Code', 'Step 3: Test'] });
-            localStorage.setItem('tutorials', JSON.stringify(tutorials));
-            updateTutorialList();
-        }
-
-        function updateTutorialList() {
-            const tutorialList = document.getElementById('tutorial-list');
-            tutorialList.innerHTML = '';
-            const tutorials = JSON.parse(localStorage.getItem('tutorials') || '[]');
-            tutorials.forEach((tutorial, index) => {
-                const item = document.createElement('div');
-                item.className = 'tutorial-item';
-                item.textContent = tutorial.name;
-                item.onclick = () => {
-                    addMessage(`Tutorial: ${tutorial.name}\n${tutorial.steps.join('\n')}`, false);
-                };
-                tutorialList.appendChild(item);
-            });
+            const snippets = JSON.parse(localStorage.getItem('snippets') || '[]');
+            snippets.push({ code, lang, name: `Snippet ${snippets.length + 1}` });
+            localStorage.setItem('snippets', JSON.stringify(snippets));
+            updateSnippetList();
+            addMessage('Snippet saved—check the sidebar!', false);
         }
 
         function updateSnippetList() {
             const snippetList = document.getElementById('snippet-list');
             snippetList.innerHTML = '';
             const snippets = JSON.parse(localStorage.getItem('snippets') || '[]');
-            snippets.forEach((snippet, index) => {
+            snippets.forEach(snippet => {
                 const item = document.createElement('div');
                 item.className = 'snippet-item';
                 item.textContent = snippet.name;
                 item.onclick = () => {
                     addMessage(`\`\`\`${snippet.lang}\n${snippet.code}\n\`\`\``, true, snippet.lang);
+                    document.getElementById('user-input').value = snippet.code;
                 };
                 snippetList.appendChild(item);
             });
         }
 
-        function createProject() {
-            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
-            const projectName = prompt('Enter project name:');
-            if (!projectName) return;
-            projects.push({ name: projectName, files: [] });
-            localStorage.setItem('projects', JSON.stringify(projects));
-            updateProjectList();
-            playClickSound();
+        function clearChat() {
+            document.getElementById('chat-messages').innerHTML = '';
+            addMessage('Chat cleared—let’s code some more!', false);
         }
 
-        function updateProjectList() {
-            const projectList = document.getElementById('project-list');
-            projectList.innerHTML = '';
-            const projects = JSON.parse(localStorage.getItem('projects') || '[]');
-            projects.forEach((project, index) => {
-                const item = document.createElement('div');
-                item.className = 'project-item';
-                item.textContent = project.name;
-                item.onclick = () => {
-                    addMessage(`Opened project: ${project.name}`, false);
-                };
-                projectList.appendChild(item);
-            });
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
         }
 
-        function shareSession() {
-            const messages = Array.from(document.querySelectorAll('.message')).map(msg => ({
-                isUser: msg.classList.contains('user-message'),
-                content: msg.querySelector('pre').textContent
-            }));
-            const sessionId = btoa(JSON.stringify(messages));
-            const shareUrl = `${window.location.origin}?session=${sessionId}`;
-            navigator.clipboard.writeText(shareUrl);
-            addMessage(`Session URL copied to clipboard: ${shareUrl}`, false);
-            playClickSound();
-        }
-
-        function loadSharedSession() {
-            const params = new URLSearchParams(window.location.search);
-            const sessionId = params.get('session');
-            if (sessionId) {
-                try {
-                    const messages = JSON.parse(atob(sessionId));
-                    messages.forEach(msg => addMessage(msg.content, msg.isUser));
-                } catch (error) {
-                    addMessage('Error loading shared session.', false);
-                }
+        function detectLanguage(code) {
+            const langSignatures = {
+                py: /def\s+\w+\s*\(|import\s+\w+/,
+                js: /function\s+\w+\s*\(|const\s+\w+/,
+                java: /public\s+class|void\s+main/,
+                cpp: /#include|int\s+main/,
+                html: /<!DOCTYPE\s+html|<div/,
+                css: /{\s*\w+:\s*\w+}/,
+                php: /<\?php|\$\w+/,
+                ruby: /def\s+\w+|end/,
+                go: /func\s+\w+|package\s+main/,
+                ts: /:\s*Type|interface\s+\w+/,
+                sql: /SELECT\s+|FROM\s+/,
+                rust: /fn\s+\w+\(|let\s+\w+:/,
+                kotlin: /fun\s+\w+\(|class\s+\w+/,
+                swift: /func\s+\w+\(|var\s+\w+:/,
+            };
+            for (const [lang, pattern] of Object.entries(langSignatures)) {
+                if (pattern.test(code)) return lang;
             }
+            return 'other';
         }
 
+        // Real-time Suggestions
         let suggestionTimeout;
-        document.getElementById('user-input').addEventListener('input', (event) => {
+        document.getElementById('user-input').addEventListener('input', (e) => {
             clearTimeout(suggestionTimeout);
-            const input = event.target;
-            const value = input.value;
-            if (value.length < 3) return;
+            const input = e.target;
+            const value = input.value.trim();
+            const lang = document.getElementById('language-selector').value;
+            const dropdown = document.getElementById('suggestions-dropdown');
 
-            suggestionTimeout = setTimeout(async () => {
-                // *** API KEY USED HERE ***
-                // The callOpenAI function uses the API_KEY you set above
-                const response = await callOpenAI(`Provide a short code suggestion for: "${value}" in ${document.getElementById('language-selector').value}`);
-                const suggestion = document.createElement('div');
-                suggestion.className = 'suggestion';
-                suggestion.textContent = response.slice(0, 100);
-                input.parentElement.appendChild(suggestion);
-                setTimeout(() => suggestion.remove(), 3000);
+            if (value.length < 3) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+
+            suggestionTimeout = setTimeout(() => {
+                const completions = ai.completer.complete(value, lang);
+                dropdown.innerHTML = '';
+                if (completions.length === 0) {
+                    dropdown.classList.add('hidden');
+                    return;
+                }
+
+                completions.forEach(comp => {
+                    const item = document.createElement('div');
+                    item.className = 'suggestion-item';
+                    item.textContent = comp.description;
+                    item.onclick = () => {
+                        input.value = comp.code;
+                        dropdown.classList.add('hidden');
+                    };
+                    dropdown.appendChild(item);
+                });
+
+                dropdown.classList.remove('hidden');
             }, 500);
         });
 
-        function exportChat() {
-            const messages = document.querySelectorAll('.message');
-            let markdown = '# MxGPT CodeNode Chat History\n\n';
-            messages.forEach(msg => {
-                const isUser = msg.classList.contains('user-message');
-                const content = msg.querySelector('pre').textContent;
-                markdown += `## ${isUser ? 'User' : 'CodeGPT'}\n${content}\n\n`;
-            });
-            const blob = new Blob([markdown], { type: 'text/markdown' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'chat_history.md';
-            a.click();
-            URL.revokeObjectURL(url);
-            playClickSound();
-        }
+        document.getElementById('user-input').addEventListener('blur', () => {
+            setTimeout(() => document.getElementById('suggestions-dropdown').classList.add('hidden'), 200);
+        });
 
-        document.getElementById('user-input').addEventListener('keydown', (event) => {
-            if (event.ctrlKey && event.key === 'Enter') {
-                event.preventDefault();
-                sendMessage();
+        document.getElementById('user-input').addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 'Enter') {
+                processInput();
+                e.preventDefault();
             }
         });
 
+        // Theme Management
+        document.getElementById('theme-selector').addEventListener('change', (e) => {
+            document.body.className = `${e.target.value}-theme`;
+            localStorage.setItem('theme', e.target.value);
+            updateMatrixCanvas();
+        });
+
+        if (localStorage.getItem('theme')) {
+            document.body.className = `${localStorage.getItem('theme')}-theme`;
+            document.getElementById('theme-selector').value = localStorage.getItem('theme');
+        } else {
+            document.body.className = 'matrix-theme';
+            document.getElementById('theme-selector').value = 'matrix';
+        }
+
+        // Initialization
+        addMessage(`Yo, CodeVision AI’s here to code like GitHub Copilot! 🚀\nI can:\n- Suggest completions as you type\n- Debug any language\n- Write code from scratch\n- Teach you step-by-step\n- Analyze and fix code\n- Extract code from images\n- Run JS/HTML in-browser\nPaste some code or ask away!`, false);
         updateSnippetList();
-        updateTutorialList();
-        updateProjectList();
-        loadSharedSession();
     </script>
 </body>
 </html>
